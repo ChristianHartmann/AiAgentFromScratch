@@ -1,0 +1,141 @@
+{
+    "_note": "Rebuild of the Hugging Face rows API response with made-up tasks. The real GAIA data must not be shared outside a gated or private repository on the HF hub, so no original content is stored here.",
+    "features": [
+        {
+            "feature_idx": 0,
+            "name": "task_id",
+            "type": {
+                "dtype": "string",
+                "_type": "Value"
+            }
+        },
+        {
+            "feature_idx": 1,
+            "name": "Question",
+            "type": {
+                "dtype": "string",
+                "_type": "Value"
+            }
+        },
+        {
+            "feature_idx": 2,
+            "name": "Level",
+            "type": {
+                "dtype": "string",
+                "_type": "Value"
+            }
+        },
+        {
+            "feature_idx": 3,
+            "name": "Final answer",
+            "type": {
+                "dtype": "string",
+                "_type": "Value"
+            }
+        },
+        {
+            "feature_idx": 4,
+            "name": "file_name",
+            "type": {
+                "dtype": "string",
+                "_type": "Value"
+            }
+        },
+        {
+            "feature_idx": 5,
+            "name": "file_path",
+            "type": {
+                "dtype": "string",
+                "_type": "Value"
+            }
+        },
+        {
+            "feature_idx": 6,
+            "name": "Annotator Metadata",
+            "type": {
+                "Steps": {
+                    "dtype": "string",
+                    "_type": "Value"
+                },
+                "Number of steps": {
+                    "dtype": "string",
+                    "_type": "Value"
+                },
+                "How long did this take?": {
+                    "dtype": "string",
+                    "_type": "Value"
+                },
+                "Tools": {
+                    "dtype": "string",
+                    "_type": "Value"
+                },
+                "Number of tools": {
+                    "dtype": "string",
+                    "_type": "Value"
+                }
+            }
+        }
+    ],
+    "rows": [
+        {
+            "row_idx": 0,
+            "row": {
+                "task_id": "11111111-1111-4111-8111-111111111111",
+                "Question": "How many matchboxes fit side by side on a shelf 80 cm wide if one box is 5 cm wide?",
+                "Level": "1",
+                "Final answer": "16",
+                "file_name": "",
+                "file_path": "",
+                "Annotator Metadata": {
+                    "Steps": "1. Divided 80 by 5.",
+                    "Number of steps": "1",
+                    "How long did this take?": "1 minute",
+                    "Tools": "1. A calculator",
+                    "Number of tools": "1"
+                }
+            },
+            "truncated_cells": []
+        },
+        {
+            "row_idx": 1,
+            "row": {
+                "task_id": "22222222-2222-4222-8222-222222222222",
+                "Question": "In which year was the fictional town of Example Falls founded? Use the attached chronicle.",
+                "Level": "2",
+                "Final answer": "1432",
+                "file_name": "chronicle.pdf",
+                "file_path": "/tmp/example/chronicle.pdf",
+                "Annotator Metadata": {
+                    "Steps": "1. Opened the chronicle.\n2. Read the first page.",
+                    "Number of steps": "2",
+                    "How long did this take?": "3 minutes",
+                    "Tools": "1. A PDF viewer",
+                    "Number of tools": "1"
+                }
+            },
+            "truncated_cells": []
+        },
+        {
+            "row_idx": 2,
+            "row": {
+                "task_id": "33333333-3333-4333-8333-333333333333",
+                "Question": "Write the word that results from reading the letters of 'shelf' backwards.",
+                "Level": "1",
+                "Final answer": "flehs",
+                "file_name": "",
+                "file_path": "",
+                "Annotator Metadata": {
+                    "Steps": "1. Reversed the letters.",
+                    "Number of steps": "1",
+                    "How long did this take?": "1 minute",
+                    "Tools": "None",
+                    "Number of tools": "0"
+                }
+            },
+            "truncated_cells": []
+        }
+    ],
+    "num_rows_total": 53,
+    "num_rows_per_page": 100,
+    "partial": false
+}
