@@ -8,22 +8,24 @@ Spring AI dient nur als Schicht zum LLM-Anbieter, so wie LiteLLM im Buch. Die Ag
 
 - Java 25
 - Spring Boot 4.1 mit Spring MVC für REST-APIs
-- Spring AI 2.0 mit OpenAI
+- Spring AI 2.0 mit OpenAI, Anthropic und Google Gemini
 - Gradle 9 (Kotlin-DSL, Wrapper im Repo)
 
 ## Voraussetzungen
 
 - JDK 25
-- ein OpenAI-API-Key
+- API-Keys für OpenAI, Anthropic und Google Gemini
 
 ## Starten
 
 ```bash
 export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
+export GEMINI_API_KEY=...
 ./gradlew bootRun
 ```
 
-Die Anwendung läuft danach auf `http://localhost:8080`. Ohne `OPENAI_API_KEY` bricht der Start mit einer Fehlermeldung ab.
+Die Anwendung läuft danach auf `http://localhost:8080`. Fehlt einer der drei Schlüssel, bricht der Start mit einer Fehlermeldung ab.
 
 ## Bauen und testen
 
@@ -31,7 +33,7 @@ Die Anwendung läuft danach auf `http://localhost:8080`. Ohne `OPENAI_API_KEY` b
 ./gradlew build
 ```
 
-Die Tests brauchen keinen API-Key.
+Die Tests brauchen keinen API-Key. Tests mit echten Aufrufen tragen das Tag `llm` und laufen getrennt über `./gradlew llmTest`, dort braucht jeder Test den Schlüssel des Anbieters, den er aufruft.
 
 ## Lizenz
 
