@@ -20,6 +20,6 @@ class ChatModelBeansTest {
 	void knowsAllThreeProviders() {
 		assertThat(router.chatModel("gpt-5-mini")).isNotNull();
 		assertThat(router.chatModel("anthropic/claude-haiku-4-5")).isNotNull();
-		assertThat(router.chatModel("google/gemini-2.5-flash")).isNotNull();
+		assertThat(router.chatModel("google/gemini-3.6-flash")).isNotNull();
 	}
 }

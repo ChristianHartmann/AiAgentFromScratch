@@ -1,14 +1,18 @@
 package dev.aiengineer.agent.llm;
 
 import java.util.Map;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 
 /**
  * Picks the provider from the model name, the way LiteLLM does in the book:
- * "anthropic/claude-haiku-4-5" goes to Anthropic, "google/gemini-2.5-flash" to Google,
+ * "anthropic/claude-haiku-4-5" goes to Anthropic, "google/gemini-3.6-flash" to Google,
  * everything without a prefix to OpenAI.
  */
 @Component
@@ -38,5 +42,19 @@ public class ModelRouter {
 
 	public ChatModel chatModel(String model) {
 		return chatModels.get(provider(model));
+	}
+
+	/**
+	 * Builds the options in the type the provider's model implementation expects. The
+	 * generic {@link ChatOptions} cannot be used here: every provider casts the options
+	 * of a prompt to its own type.
+	 */
+	public ChatOptions options(String model) {
+		String modelId = modelId(model);
+		return switch (provider(model)) {
+			case OPENAI -> OpenAiChatOptions.builder().model(modelId).build();
+			case ANTHROPIC -> AnthropicChatOptions.builder().model(modelId).build();
+			case GOOGLE -> GoogleGenAiChatOptions.builder().model(modelId).build();
+		};
 	}
 }

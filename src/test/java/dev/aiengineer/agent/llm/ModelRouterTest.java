@@ -6,7 +6,10 @@ import static org.mockito.Mockito.mock;
 
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
+import org.springframework.ai.openai.OpenAiChatOptions;
 
 class ModelRouterTest {
 
@@ -29,8 +32,8 @@ class ModelRouterTest {
 
 	@Test
 	void selectsGoogleByPrefix() {
-		assertThat(router.provider("google/gemini-2.5-flash")).isEqualTo(Provider.GOOGLE);
-		assertThat(router.chatModel("google/gemini-2.5-flash")).isSameAs(google);
+		assertThat(router.provider("google/gemini-3.6-flash")).isEqualTo(Provider.GOOGLE);
+		assertThat(router.chatModel("google/gemini-3.6-flash")).isSameAs(google);
 	}
 
 	@Test
@@ -42,8 +45,20 @@ class ModelRouterTest {
 	@Test
 	void stripsThePrefixFromTheModelName() {
 		assertThat(router.modelId("anthropic/claude-haiku-4-5")).isEqualTo("claude-haiku-4-5");
-		assertThat(router.modelId("google/gemini-2.5-flash")).isEqualTo("gemini-2.5-flash");
+		assertThat(router.modelId("google/gemini-3.6-flash")).isEqualTo("gemini-3.6-flash");
 		assertThat(router.modelId("gpt-5-mini")).isEqualTo("gpt-5-mini");
+	}
+
+	@Test
+	void buildsOptionsOfTheTypeTheProviderExpects() {
+		assertThat(router.options("gpt-5-mini")).isInstanceOf(OpenAiChatOptions.class);
+		assertThat(router.options("anthropic/claude-haiku-4-5")).isInstanceOf(AnthropicChatOptions.class);
+		assertThat(router.options("google/gemini-3.6-flash")).isInstanceOf(GoogleGenAiChatOptions.class);
+	}
+
+	@Test
+	void putsTheModelIdWithoutPrefixIntoTheOptions() {
+		assertThat(router.options("google/gemini-3.6-flash").getModel()).isEqualTo("gemini-3.6-flash");
 	}
 
 	@Test
