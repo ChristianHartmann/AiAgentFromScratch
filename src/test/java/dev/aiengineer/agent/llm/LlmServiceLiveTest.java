@@ -70,6 +70,24 @@ class LlmServiceLiveTest {
 		assertThat(facts.populationInMillions()).isPositive();
 	}
 
+	record Sum(int result) {
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "google/gemini-3.6-flash", "gpt-5-mini", "anthropic/claude-haiku-4-5" })
+	void answersABatchConcurrently(String model) {
+		assumeKeyPresentFor(model);
+		List<List<ChatMessage>> batch = List.of(
+			List.of(ChatMessage.user("What is 2 + 2?")),
+			List.of(ChatMessage.user("What is 3 + 3?")),
+			List.of(ChatMessage.user("What is 4 + 4?")));
+
+		List<LlmResult<Sum>> results = service.completeAll(model, batch, Sum.class);
+
+		assertThat(results).allMatch(LlmResult::isSuccess);
+		assertThat(results).extracting(result -> result.value().result()).containsExactly(4, 6, 8);
+	}
+
 	private void assumeKeyPresentFor(String model) {
 		String variable = switch (router.provider(model)) {
 			case OPENAI -> "OPENAI_API_KEY";

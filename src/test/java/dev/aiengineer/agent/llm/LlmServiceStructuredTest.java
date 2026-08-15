@@ -24,7 +24,7 @@ class LlmServiceStructuredTest {
 
 	private final ChatModel openAi = mock(ChatModel.class);
 
-	private final LlmService service = new LlmService(new ModelRouter(Map.of(Provider.OPENAI, openAi)));
+	private final LlmService service = new LlmService(new ModelRouter(Map.of(Provider.OPENAI, openAi)), ConcurrencyProperties.defaults());
 
 	@Test
 	void convertsTheAnswerIntoARecord() {

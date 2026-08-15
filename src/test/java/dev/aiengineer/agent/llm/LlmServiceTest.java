@@ -25,7 +25,7 @@ class LlmServiceTest {
 	private final ChatModel google = mock(ChatModel.class);
 
 	private final LlmService service = new LlmService(
-		new ModelRouter(Map.of(Provider.OPENAI, openAi, Provider.GOOGLE, google)));
+		new ModelRouter(Map.of(Provider.OPENAI, openAi, Provider.GOOGLE, google)), ConcurrencyProperties.defaults());
 
 	@Test
 	void returnsTheTextOfTheAnswer() {
