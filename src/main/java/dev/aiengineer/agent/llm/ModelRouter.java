@@ -5,6 +5,7 @@ import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
+import org.springframework.ai.model.tool.StructuredOutputChatOptions;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -50,11 +51,23 @@ public class ModelRouter {
 	 * of a prompt to its own type.
 	 */
 	public ChatOptions options(String model) {
-		String modelId = modelId(model);
-		return switch (provider(model)) {
-			case OPENAI -> OpenAiChatOptions.builder().model(modelId).build();
-			case ANTHROPIC -> AnthropicChatOptions.builder().model(modelId).build();
-			case GOOGLE -> GoogleGenAiChatOptions.builder().model(modelId).build();
+		return builder(model).build();
+	}
+
+	/**
+	 * Like {@link #options(String)}, but asks the provider for an answer that matches the
+	 * given JSON schema, using its native structured output feature.
+	 */
+	public ChatOptions options(String model, String outputSchema) {
+		return builder(model).outputSchema(outputSchema).build();
+	}
+
+	private StructuredOutputChatOptions.Builder<?> builder(String model) {
+		StructuredOutputChatOptions.Builder<?> builder = switch (provider(model)) {
+			case OPENAI -> OpenAiChatOptions.builder();
+			case ANTHROPIC -> AnthropicChatOptions.builder();
+			case GOOGLE -> GoogleGenAiChatOptions.builder();
 		};
+		return builder.model(modelId(model));
 	}
 }

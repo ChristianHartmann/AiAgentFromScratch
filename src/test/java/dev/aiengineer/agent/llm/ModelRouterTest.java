@@ -9,6 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
+import org.springframework.ai.model.tool.StructuredOutputChatOptions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.ai.openai.OpenAiChatOptions;
 
 class ModelRouterTest {
@@ -59,6 +62,17 @@ class ModelRouterTest {
 	@Test
 	void putsTheModelIdWithoutPrefixIntoTheOptions() {
 		assertThat(router.options("google/gemini-3.6-flash").getModel()).isEqualTo("gemini-3.6-flash");
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "gpt-5-mini", "anthropic/claude-haiku-4-5", "google/gemini-3.6-flash" })
+	void putsTheOutputSchemaIntoTheOptions(String model) {
+		String schema = "{\"type\":\"object\"}";
+
+		StructuredOutputChatOptions options = (StructuredOutputChatOptions) router.options(model, schema);
+
+		assertThat(options.getOutputSchema()).contains("object");
+		assertThat(options.getModel()).isEqualTo(router.modelId(model));
 	}
 
 	@Test

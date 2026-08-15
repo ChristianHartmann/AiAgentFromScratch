@@ -53,6 +53,23 @@ class LlmServiceLiveTest {
 		assertThat(service.complete(model, conversation.messages())).containsIgnoringCase("Max");
 	}
 
+	record CityFacts(String city, String country, int populationInMillions) {
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "google/gemini-3.6-flash", "gpt-5-mini", "anthropic/claude-haiku-4-5" })
+	void returnsAStructuredAnswer(String model) {
+		assumeKeyPresentFor(model);
+
+		CityFacts facts = service.complete(model,
+			List.of(ChatMessage.user("Name the capital of France, its country and its population.")),
+			CityFacts.class);
+
+		assertThat(facts.city()).containsIgnoringCase("Paris");
+		assertThat(facts.country()).containsIgnoringCase("France");
+		assertThat(facts.populationInMillions()).isPositive();
+	}
+
 	private void assumeKeyPresentFor(String model) {
 		String variable = switch (router.provider(model)) {
 			case OPENAI -> "OPENAI_API_KEY";
