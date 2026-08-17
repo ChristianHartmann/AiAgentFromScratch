@@ -14,6 +14,7 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.converter.BeanOutputConverter;
@@ -77,11 +78,19 @@ public class LlmService {
 		}
 		try {
 			ChatResponse response = router.chatModel(model).call(new Prompt(toSpringAi(messages), options));
-			return response.getResult().getOutput().getText();
+			return textOf(model, response.getResult());
 		}
 		finally {
 			slot.release();
 		}
+	}
+
+	private static String textOf(String model, Generation generation) {
+		String text = generation.getOutput().getText();
+		if (text == null || text.isBlank()) {
+			throw new LlmRefusalException(model, generation.getMetadata().getFinishReason());
+		}
+		return text;
 	}
 
 	private static <T> LlmResult<T> result(Future<T> future) {
