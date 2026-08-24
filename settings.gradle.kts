@@ -1,1 +1,3 @@
-rootProject.name = "agent"
+rootProject.name = "ai-agent-from-scratch"
+
+include("agent")

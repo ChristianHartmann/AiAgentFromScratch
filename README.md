@@ -22,7 +22,7 @@ Spring AI dient nur als Schicht zum LLM-Anbieter, so wie LiteLLM im Buch. Die Ag
 export OPENAI_API_KEY=sk-...
 export ANTHROPIC_API_KEY=sk-ant-...
 export GEMINI_API_KEY=...
-./gradlew bootRun
+./gradlew :agent:bootRun
 ```
 
 Die Anwendung läuft danach auf `http://localhost:8080`. Fehlt einer der drei Schlüssel, bricht der Start mit einer Fehlermeldung ab.
@@ -33,7 +33,7 @@ Die Anwendung läuft danach auf `http://localhost:8080`. Fehlt einer der drei Sc
 ./gradlew build
 ```
 
-Die Tests brauchen keinen API-Key. Tests mit echten Aufrufen tragen das Tag `llm` und laufen getrennt über `./gradlew llmTest`, dort braucht jeder Test den Schlüssel des Anbieters, den er aufruft.
+Die Tests brauchen keinen API-Key. Tests mit echten Aufrufen tragen das Tag `llm` und laufen getrennt über `./gradlew :agent:llmTest`, dort braucht jeder Test den Schlüssel des Anbieters, den er aufruft.
 
 ## Lizenz
 
