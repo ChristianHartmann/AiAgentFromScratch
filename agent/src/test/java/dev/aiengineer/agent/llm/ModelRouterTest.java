@@ -4,12 +4,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.ai.model.tool.StructuredOutputChatOptions;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -72,6 +74,18 @@ class ModelRouterTest {
 		StructuredOutputChatOptions options = (StructuredOutputChatOptions) router.options(model, schema);
 
 		assertThat(options.getOutputSchema()).contains("object");
+		assertThat(options.getModel()).isEqualTo(router.modelId(model));
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "gpt-5-mini", "anthropic/claude-haiku-4-5", "google/gemini-3.6-flash" })
+	void putsTheToolsIntoTheOptionsOfEveryProvider(String model) {
+		ToolDefinition tool = new ToolDefinition("searchWeb", "Search the web", "{\"type\":\"object\"}");
+
+		ToolCallingChatOptions options = (ToolCallingChatOptions) router.options(model, List.of(tool));
+
+		assertThat(options.getToolCallbacks()).extracting(callback -> callback.getToolDefinition().name())
+			.containsExactly("searchWeb");
 		assertThat(options.getModel()).isEqualTo(router.modelId(model));
 	}
 

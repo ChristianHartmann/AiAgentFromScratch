@@ -26,6 +26,10 @@ public class Conversation {
 		messages.add(ChatMessage.assistant(content));
 	}
 
+	public void add(ChatMessage message) {
+		messages.add(message);
+	}
+
 	public List<ChatMessage> messages() {
 		return Collections.unmodifiableList(messages);
 	}

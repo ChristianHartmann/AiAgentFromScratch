@@ -1,12 +1,15 @@
 package dev.aiengineer.agent.llm;
 
+import java.util.List;
 import java.util.Map;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.google.genai.GoogleGenAiChatOptions;
 import org.springframework.ai.model.tool.StructuredOutputChatOptions;
+import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.openai.OpenAiChatOptions;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -60,6 +63,17 @@ public class ModelRouter {
 	 */
 	public ChatOptions options(String model, String outputSchema) {
 		return builder(model).outputSchema(outputSchema).build();
+	}
+
+	/**
+	 * Like {@link #options(String)}, but offers the given tools to the model. The builders of
+	 * all three providers implement the tool calling builder, hence the cast.
+	 */
+	public ChatOptions options(String model, List<ToolDefinition> tools) {
+		StructuredOutputChatOptions.Builder<?> builder = builder(model);
+		List<ToolCallback> callbacks = tools.stream().<ToolCallback>map(DefinitionOnlyToolCallback::new).toList();
+		((ToolCallingChatOptions.Builder<?>) builder).toolCallbacks(callbacks);
+		return builder.build();
 	}
 
 	private StructuredOutputChatOptions.Builder<?> builder(String model) {

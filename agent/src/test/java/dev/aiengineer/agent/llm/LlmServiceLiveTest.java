@@ -1,7 +1,6 @@
 package dev.aiengineer.agent.llm;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.Tag;
@@ -31,7 +30,7 @@ class LlmServiceLiveTest {
 	@ParameterizedTest
 	@ValueSource(strings = { "google/gemini-3.6-flash", "gpt-5-mini", "anthropic/claude-haiku-4-5" })
 	void answersAFactualQuestion(String model) {
-		assumeKeyPresentFor(model);
+		LiveTests.assumeKeyPresentFor(router, model);
 
 		String answer = service.complete(model, List.of(
 			ChatMessage.system("Answer with a single word."),
@@ -43,7 +42,7 @@ class LlmServiceLiveTest {
 	@ParameterizedTest
 	@ValueSource(strings = { "google/gemini-3.6-flash", "gpt-5-mini", "anthropic/claude-haiku-4-5" })
 	void keepsTheConversationAcrossTwoCalls(String model) {
-		assumeKeyPresentFor(model);
+		LiveTests.assumeKeyPresentFor(router, model);
 
 		Conversation conversation = Conversation.withSystemPrompt("Answer briefly.");
 		conversation.addUser("My name is Max.");
@@ -59,7 +58,7 @@ class LlmServiceLiveTest {
 	@ParameterizedTest
 	@ValueSource(strings = { "google/gemini-3.6-flash", "gpt-5-mini", "anthropic/claude-haiku-4-5" })
 	void returnsAStructuredAnswer(String model) {
-		assumeKeyPresentFor(model);
+		LiveTests.assumeKeyPresentFor(router, model);
 
 		CityFacts facts = service.complete(model,
 			List.of(ChatMessage.user("Name the capital of France, its country and its population.")),
@@ -76,7 +75,7 @@ class LlmServiceLiveTest {
 	@ParameterizedTest
 	@ValueSource(strings = { "google/gemini-3.6-flash", "gpt-5-mini", "anthropic/claude-haiku-4-5" })
 	void answersABatchConcurrently(String model) {
-		assumeKeyPresentFor(model);
+		LiveTests.assumeKeyPresentFor(router, model);
 		List<List<ChatMessage>> batch = List.of(
 			List.of(ChatMessage.user("What is 2 + 2?")),
 			List.of(ChatMessage.user("What is 3 + 3?")),
@@ -86,15 +85,5 @@ class LlmServiceLiveTest {
 
 		assertThat(results).allMatch(LlmResult::isSuccess);
 		assertThat(results).extracting(result -> result.value().result()).containsExactly(4, 6, 8);
-	}
-
-	private void assumeKeyPresentFor(String model) {
-		String variable = switch (router.provider(model)) {
-			case OPENAI -> "OPENAI_API_KEY";
-			case ANTHROPIC -> "ANTHROPIC_API_KEY";
-			case GOOGLE -> "GEMINI_API_KEY";
-		};
-		String key = System.getenv(variable);
-		assumeTrue(key != null && !key.isBlank(), variable + " is not set");
 	}
 }
