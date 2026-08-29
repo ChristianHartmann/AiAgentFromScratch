@@ -15,6 +15,17 @@ Spring AI dient nur als Schicht zum LLM-Anbieter, so wie LiteLLM im Buch. Die Ag
 
 - JDK 25
 - API-Keys für OpenAI, Anthropic und Google Gemini
+- Docker für die lokale Websuche (SearXNG)
+
+## Websuche
+
+Die Websuche läuft über eine lokale SearXNG-Instanz, erreichbar nur auf diesem Rechner:
+
+```bash
+docker compose up -d
+```
+
+SearXNG leitet Suchanfragen an Suchmaschinen wie Google oder Bing weiter. Einzelne davon drosseln bei vielen Anfragen, dann fehlen ihre Treffer.
 
 ## Starten
 

@@ -1,0 +1,12 @@
+# Local SearXNG instance for the web search tool (chapter 3).
+# Bound to localhost only: the search engine must not be reachable from the network.
+services:
+  searxng:
+    image: searxng/searxng:2026.9.25-12f8b6515
+    ports:
+      - "127.0.0.1:8888:8080"
+    environment:
+      SEARXNG_SECRET: ${SEARXNG_SECRET:-local-development-only}
+    volumes:
+      - ./searxng/settings.yml:/etc/searxng/settings.yml:ro
+    restart: unless-stopped

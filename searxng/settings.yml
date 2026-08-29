@@ -1,0 +1,12 @@
+# Only the differences to the defaults of SearXNG.
+use_default_settings: true
+
+server:
+  # The limiter needs a Valkey instance and only protects public instances.
+  limiter: false
+
+search:
+  # JSON is disabled by default, the API then answers with HTTP 403.
+  formats:
+    - html
+    - json
