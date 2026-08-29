@@ -39,4 +39,15 @@ class ConversationTest {
 
 		assertThat(messages).isUnmodifiable();
 	}
+
+	@Test
+	void returnsASnapshotThatLaterMessagesDoNotChange() {
+		Conversation conversation = new Conversation();
+		conversation.addUser("First");
+
+		var snapshot = conversation.messages();
+		conversation.addUser("Second");
+
+		assertThat(snapshot).hasSize(1);
+	}
 }

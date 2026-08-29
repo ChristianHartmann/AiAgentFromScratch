@@ -1,7 +1,6 @@
 package dev.aiengineer.agent.llm;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -31,6 +30,6 @@ public class Conversation {
 	}
 
 	public List<ChatMessage> messages() {
-		return Collections.unmodifiableList(messages);
+		return List.copyOf(messages);
 	}
 }
