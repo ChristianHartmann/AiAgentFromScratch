@@ -3,6 +3,7 @@ package dev.aiengineer.agent.llm;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -33,8 +34,10 @@ class LlmServiceToolsTest {
 
 	private final ChatModel openAi = mock(ChatModel.class);
 
-	private final LlmService service = new LlmService(new ModelRouter(Map.of(Provider.OPENAI, openAi)),
-		ConcurrencyProperties.defaults());
+	private final ChatModel google = mock(ChatModel.class);
+
+	private final LlmService service = new LlmService(
+		new ModelRouter(Map.of(Provider.OPENAI, openAi, Provider.GOOGLE, google)), ConcurrencyProperties.defaults());
 
 	@Test
 	void sendsToolDefinitionsWithThePrompt() {
@@ -164,11 +167,63 @@ class LlmServiceToolsTest {
 	}
 
 	@Test
+	void encodesPlainTextToolResultsAsJsonForGoogle() {
+		assertThat(toolResultSentToGoogle("Suggestions: nobel prize 2025")).isEqualTo("\"Suggestions: nobel prize 2025\"");
+	}
+
+	@Test
+	void keepsToolResultsThatAreJsonForGoogle() {
+		assertThat(toolResultSentToGoogle("{\"city\":\"Berlin\"}")).isEqualTo("{\"city\":\"Berlin\"}");
+		assertThat(toolResultSentToGoogle("7006652.0")).isEqualTo("7006652.0");
+	}
+
+	@Test
+	void encodesTextThatOnlyStartsLikeJsonForGoogle() {
+		assertThat(toolResultSentToGoogle("3 results found")).isEqualTo("\"3 results found\"");
+	}
+
+	@Test
+	void encodesAnEmptyToolResultForGoogle() {
+		assertThat(toolResultSentToGoogle("")).isEqualTo("\"\"");
+	}
+
+	@Test
+	void keepsPlainTextToolResultsForOtherProviders() {
+		answerWithText("done");
+
+		service.respond("gpt-5-mini", List.of(
+			ChatMessage.user("Search"),
+			ChatMessage.assistant("", List.of(call)),
+			ChatMessage.toolResult(call, "Suggestions: nobel prize 2025")), List.of(search));
+
+		assertThat(((ToolResponseMessage) capturedPrompt().getInstructions().get(2)).getResponses().getFirst()
+			.responseData()).isEqualTo("Suggestions: nobel prize 2025");
+	}
+
+	@Test
 	void reportsARefusalOnlyWhenThereIsNeitherTextNorToolCalls() {
 		answerWithText("");
 
 		assertThatThrownBy(() -> service.respond("gpt-5-mini", List.of(ChatMessage.user("Hi")), List.of(search)))
 			.isInstanceOf(LlmRefusalException.class);
+	}
+
+	/**
+	 * Spring AI parses every tool result for Gemini as JSON, plain text makes it fail.
+	 */
+	private String toolResultSentToGoogle(String content) {
+		when(google.call(any(Prompt.class))).thenReturn(response(new AssistantMessage("done")));
+
+		service.respond("google/gemini-3.6-flash", List.of(
+			ChatMessage.user("Search"),
+			ChatMessage.assistant("", List.of(call)),
+			ChatMessage.toolResult(call, content)), List.of(search));
+
+		ArgumentCaptor<Prompt> prompts = ArgumentCaptor.forClass(Prompt.class);
+		verify(google, atLeastOnce()).call(prompts.capture());
+		return ((ToolResponseMessage) prompts.getAllValues().getLast().getInstructions().get(2)).getResponses()
+			.getFirst()
+			.responseData();
 	}
 
 	private void answerWithText(String text) {

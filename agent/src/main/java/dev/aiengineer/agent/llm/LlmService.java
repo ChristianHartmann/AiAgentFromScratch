@@ -21,6 +21,9 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The single entry point for LLM calls. Plays the role LiteLLM plays in the book:
@@ -31,6 +34,10 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class LlmService {
+
+	private static final JsonMapper STRICT_JSON = JsonMapper.builder()
+		.enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
+		.build();
 
 	private final ModelRouter router;
 
@@ -105,7 +112,8 @@ public class LlmService {
 			throw new IllegalStateException("Interrupted while waiting for a free slot for " + model, ex);
 		}
 		try {
-			return router.chatModel(model).call(new Prompt(toSpringAi(messages), options)).getResult();
+			Prompt prompt = new Prompt(toSpringAi(router.provider(model), messages), options);
+			return router.chatModel(model).call(prompt).getResult();
 		}
 		finally {
 			slot.release();
@@ -137,13 +145,14 @@ public class LlmService {
 	 * Translates our messages into Spring AI's. Consecutive tool results belong to one answer
 	 * of the model and go back together in a single tool response, as Gemini expects it.
 	 */
-	private static List<Message> toSpringAi(List<ChatMessage> messages) {
+	private static List<Message> toSpringAi(Provider provider, List<ChatMessage> messages) {
 		List<Message> result = new ArrayList<>();
 		List<ToolResponseMessage.ToolResponse> pendingToolResults = new ArrayList<>();
 		for (ChatMessage message : messages) {
 			if (message instanceof ChatMessage.ToolResultMessage toolResult) {
+				String content = provider == Provider.GOOGLE ? asJsonDocument(toolResult.content()) : toolResult.content();
 				pendingToolResults.add(new ToolResponseMessage.ToolResponse(
-						toolResult.toolCallId(), toolResult.toolName(), toolResult.content()));
+						toolResult.toolCallId(), toolResult.toolName(), content));
 				continue;
 			}
 			flush(pendingToolResults, result);
@@ -162,6 +171,25 @@ public class LlmService {
 		}
 		flush(pendingToolResults, result);
 		return result;
+	}
+
+	/**
+	 * Spring AI parses every tool result for Gemini as JSON and fails on plain text, which is
+	 * what MCP servers usually return. Text that is not a complete JSON document therefore goes
+	 * out as JSON string. Trailing text counts as not JSON, so "3 results found" does not turn
+	 * into the number 3.
+	 */
+	private static String asJsonDocument(String content) {
+		if (!content.isBlank()) {
+			try {
+				STRICT_JSON.readTree(content);
+				return content;
+			}
+			catch (JacksonException ex) {
+				// not JSON, encoded below
+			}
+		}
+		return STRICT_JSON.writeValueAsString(content);
 	}
 
 	private static void flush(List<ToolResponseMessage.ToolResponse> pendingToolResults, List<Message> result) {
