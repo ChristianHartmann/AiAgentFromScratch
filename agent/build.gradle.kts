@@ -26,6 +26,7 @@ dependencies {
 	implementation("org.springframework.ai:spring-ai-starter-model-openai")
 	implementation("org.springframework.ai:spring-ai-starter-model-anthropic")
 	implementation("org.springframework.ai:spring-ai-starter-model-google-genai")
+	implementation("org.springframework.ai:spring-ai-mcp")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
