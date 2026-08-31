@@ -16,6 +16,7 @@ Spring AI dient nur als Schicht zum LLM-Anbieter, so wie LiteLLM im Buch. Die Ag
 - JDK 25
 - API-Keys für OpenAI, Anthropic und Google Gemini
 - Docker für die lokale Websuche (SearXNG)
+- Node mit npx für den MCP-Server `mcp-searxng` und den MCP Inspector
 
 ## Websuche
 
@@ -45,6 +46,19 @@ Die Anwendung läuft danach auf `http://localhost:8080`. Fehlt einer der drei Sc
 ```
 
 Die Tests brauchen keinen API-Key. Tests mit echten Aufrufen tragen das Tag `llm` und laufen getrennt über `./gradlew :agent:llmTest`, dort braucht jeder Test den Schlüssel des Anbieters, den er aufruft.
+
+## Module
+
+- `agent`: der Agent selbst
+- `mcp-search-server`: ein MCP-Server mit einem Such-Tool über SearXNG, angesprochen über stdio (Buch 3.4.4)
+
+Der Server lässt sich mit dem MCP Inspector ausprobieren:
+
+```bash
+docker compose up -d
+./gradlew :mcp-search-server:bootJar
+npx @modelcontextprotocol/inspector java -jar mcp-search-server/build/libs/mcp-search-server.jar
+```
 
 ## Lizenz
 

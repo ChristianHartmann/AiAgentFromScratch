@@ -52,4 +52,7 @@ tasks.register<Test>("llmTest") {
 		includeTags("llm")
 	}
 	outputs.upToDateWhen { false }
+	dependsOn(":mcp-search-server:bootJar")
+	systemProperty("mcpSearchServerJar",
+		rootProject.layout.projectDirectory.file("mcp-search-server/build/libs/mcp-search-server.jar").asFile.absolutePath)
 }
