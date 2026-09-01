@@ -13,7 +13,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  * Loads real GAIA tasks. Nothing of their content is printed or stored: the terms of the
  * dataset forbid sharing it outside a gated repository.
  */
-@Tag("llm")
+@Tag("external")
 @SpringBootTest(properties = {
 	"spring.ai.openai.api-key=${OPENAI_API_KEY:not-set}",
 	"spring.ai.anthropic.api-key=${ANTHROPIC_API_KEY:not-set}",

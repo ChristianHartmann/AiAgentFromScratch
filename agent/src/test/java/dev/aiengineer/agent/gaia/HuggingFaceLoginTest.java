@@ -10,7 +10,7 @@ import java.net.http.HttpResponse;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-@Tag("llm")
+@Tag("external")
 class HuggingFaceLoginTest {
 
 	@Test

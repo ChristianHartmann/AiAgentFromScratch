@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@Tag("llm")
 @SpringBootTest(properties = {
 	"spring.ai.openai.api-key=${OPENAI_API_KEY:not-set}",
 	"spring.ai.anthropic.api-key=${ANTHROPIC_API_KEY:not-set}",
@@ -33,6 +32,7 @@ class McpToolSourceLiveTest {
 	private ModelRouter router;
 
 	@Test
+	@Tag("external")
 	void listsAndCallsTheToolsOfTheSearxngServer() {
 		String searxngUrl = LiveTests.assumeSearxngRunning();
 
@@ -47,6 +47,7 @@ class McpToolSourceLiveTest {
 	}
 
 	@Test
+	@Tag("llm")
 	void letsTheLoopSearchThroughMcp() {
 		LiveTests.assumeKeyPresentFor(router, MODEL);
 		String searxngUrl = LiveTests.assumeSearxngRunning();

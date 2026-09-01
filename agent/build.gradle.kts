@@ -39,19 +39,29 @@ dependencyManagement {
 
 tasks.test {
 	useJUnitPlatform {
-		excludeTags("llm")
+		excludeTags("llm", "external")
 	}
 }
 
-tasks.register<Test>("llmTest") {
-	description = "Tests, die echte LLM- und HTTP-Aufrufe machen"
+/**
+ * Tests that need the network. They are kept out of the regular build and run on demand:
+ * "llm" tests call a model and cost quota, "external" tests only need Hugging Face, SearXNG
+ * or an MCP server and are free.
+ */
+fun registerLiveTest(name: String, tag: String, taskDescription: String) = tasks.register<Test>(name) {
+	description = taskDescription
 	group = "verification"
 	testClassesDirs = sourceSets["test"].output.classesDirs
 	classpath = sourceSets["test"].runtimeClasspath
 	useJUnitPlatform {
-		includeTags("llm")
+		includeTags(tag)
 	}
 	outputs.upToDateWhen { false }
+}
+
+registerLiveTest("llmTest", "llm", "Tests that call a real language model and use up its quota")
+
+registerLiveTest("externalTest", "external", "Tests against Hugging Face, SearXNG and MCP servers, without a model").configure {
 	dependsOn(":mcp-search-server:bootJar")
 	systemProperty("mcpSearchServerJar",
 		rootProject.layout.projectDirectory.file("mcp-search-server/build/libs/mcp-search-server.jar").asFile.absolutePath)

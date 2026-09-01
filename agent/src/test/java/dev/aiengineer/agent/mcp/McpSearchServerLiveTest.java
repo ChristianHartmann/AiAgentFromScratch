@@ -10,7 +10,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
-@Tag("llm")
+@Tag("external")
 class McpSearchServerLiveTest {
 
 	@Test

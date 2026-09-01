@@ -45,7 +45,14 @@ Die Anwendung läuft danach auf `http://localhost:8080`. Fehlt einer der drei Sc
 ./gradlew build
 ```
 
-Die Tests brauchen keinen API-Key. Tests mit echten Aufrufen tragen das Tag `llm` und laufen getrennt über `./gradlew :agent:llmTest`, dort braucht jeder Test den Schlüssel des Anbieters, den er aufruft.
+Die Tests brauchen weder API-Key noch Netz. Tests mit echten Aufrufen laufen getrennt:
+
+```bash
+./gradlew :agent:externalTest   # Hugging Face, SearXNG, MCP-Server, ohne Sprachmodell
+./gradlew :agent:llmTest        # mit echtem Sprachmodell, verbraucht Kontingent
+```
+
+Jeder Live-Test überspringt sich, wenn der nötige Schlüssel fehlt oder SearXNG nicht läuft.
 
 ## Module
 

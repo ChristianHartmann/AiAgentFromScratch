@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@Tag("llm")
+@Tag("external")
 @SpringBootTest(properties = {
 	"spring.ai.openai.api-key=${OPENAI_API_KEY:not-set}",
 	"spring.ai.anthropic.api-key=${ANTHROPIC_API_KEY:not-set}",

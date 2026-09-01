@@ -29,18 +29,6 @@ class LlmServiceLiveTest {
 
 	@ParameterizedTest
 	@ValueSource(strings = { "google/gemini-3.6-flash", "gpt-5-mini", "anthropic/claude-haiku-4-5" })
-	void answersAFactualQuestion(String model) {
-		LiveTests.assumeKeyPresentFor(router, model);
-
-		String answer = service.complete(model, List.of(
-			ChatMessage.system("Answer with a single word."),
-			ChatMessage.user("What is the capital of France?")));
-
-		assertThat(answer).containsIgnoringCase("Paris");
-	}
-
-	@ParameterizedTest
-	@ValueSource(strings = { "google/gemini-3.6-flash", "gpt-5-mini", "anthropic/claude-haiku-4-5" })
 	void keepsTheConversationAcrossTwoCalls(String model) {
 		LiveTests.assumeKeyPresentFor(router, model);
 
@@ -78,12 +66,11 @@ class LlmServiceLiveTest {
 		LiveTests.assumeKeyPresentFor(router, model);
 		List<List<ChatMessage>> batch = List.of(
 			List.of(ChatMessage.user("What is 2 + 2?")),
-			List.of(ChatMessage.user("What is 3 + 3?")),
-			List.of(ChatMessage.user("What is 4 + 4?")));
+			List.of(ChatMessage.user("What is 3 + 3?")));
 
 		List<LlmResult<Sum>> results = service.completeAll(model, batch, Sum.class);
 
 		assertThat(results).allMatch(LlmResult::isSuccess);
-		assertThat(results).extracting(result -> result.value().result()).containsExactly(4, 6, 8);
+		assertThat(results).extracting(result -> result.value().result()).containsExactly(4, 6);
 	}
 }

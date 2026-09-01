@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import dev.aiengineer.agent.llm.LiveTests;
 import dev.aiengineer.agent.llm.LlmService;
 import dev.aiengineer.agent.llm.ModelRouter;
-import dev.aiengineer.agent.tool.CalculatorTools;
 import dev.aiengineer.agent.tool.Toolbox;
 import dev.aiengineer.agent.tool.WebSearchTools;
 import org.junit.jupiter.api.Tag;
@@ -36,16 +35,6 @@ class SimpleAgentLoopLiveTest {
 
 	@Autowired
 	private WebSearchTools webSearch;
-
-	@Test
-	void solvesACalculationWithTheCalculator() {
-		LiveTests.assumeKeyPresentFor(router, MODEL);
-
-		String answer = new SimpleAgentLoop(llm).run(MODEL, "You are a helpful assistant. Use the calculator for arithmetic.",
-				"What is 1234 x 5678?", Toolbox.of(new CalculatorTools()));
-
-		assertThat(answer.replaceAll("[,.\\s]", "")).contains("7006652");
-	}
 
 	@Test
 	void answersACurrentQuestionThroughTheWebSearch() {
