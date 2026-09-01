@@ -4,6 +4,21 @@ Ein KI-Agent, von Grund auf in Java gebaut. Das Projekt folgt dem Buch [Build an
 
 Spring AI dient nur als Schicht zum LLM-Anbieter, so wie LiteLLM im Buch. Die Agenten-Schleife, die Tools, das Memory und die Multi-Agent-Muster entstehen selbst geschrieben. Der `ChatClient` mit seinen Advisors, dem Memory und der automatischen Tool-Schleife bleibt deshalb außen vor, aufgerufen wird direkt das `ChatModel`.
 
+## Fortschritt
+
+| Kapitel | Titel im Buch | Stand | Hinweis |
+| --- | --- | --- | --- |
+| 1 | What is an AI agent? | ✅ Erledigt | Einführung ohne Code |
+| 2 | The brain of AI agents: LLMs | ✅ Erledigt | Tag `chapter-02`; der Lauf des GAIA-Experiments steht noch aus |
+| 3 | Enabling actions: Tool use | ✅ Erledigt | Tag `chapter-03`; Websuche über SearXNG statt Tavily |
+| 4 | Implementing a basic ReAct agent | ⚠️ In Arbeit | |
+| 5 | Building knowledge bases with RAG | ❌ Offen | |
+| 6 | Adding memory to your agent | ❌ Offen | |
+| 7 | Planning and reflection for complex tasks | ❌ Offen | |
+| 8 | Empowering agents with code execution | ❌ Offen | |
+| 9 | Orchestrating multi-agent systems | ❌ Offen | |
+| 10 | Evaluating agents | ❌ Offen | |
+
 ## Stack
 
 - Java 25
