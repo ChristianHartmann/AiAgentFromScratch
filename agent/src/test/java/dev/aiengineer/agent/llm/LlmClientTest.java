@@ -20,13 +20,13 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
 
-class LlmServiceTest {
+class LlmClientTest {
 
 	private final ChatModel openAi = mock(ChatModel.class);
 
 	private final ChatModel google = mock(ChatModel.class);
 
-	private final LlmService service = new LlmService(
+	private final LlmClient service = new LlmClient(
 		new ModelRouter(Map.of(Provider.OPENAI, openAi, Provider.GOOGLE, google)), ConcurrencyProperties.defaults());
 
 	@Test

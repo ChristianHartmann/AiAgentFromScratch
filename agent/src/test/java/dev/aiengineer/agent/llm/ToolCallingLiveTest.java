@@ -37,7 +37,7 @@ class ToolCallingLiveTest {
 					""");
 
 	@Autowired
-	private LlmService service;
+	private LlmClient service;
 
 	@Autowired
 	private ModelRouter router;

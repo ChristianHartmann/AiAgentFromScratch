@@ -26,14 +26,14 @@ import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The single entry point for LLM calls. Plays the role LiteLLM plays in the book:
- * callers name a model, everything provider specific happens behind this class.
+ * The client for all LLM calls, the LlmClient of section 4.5.4. Plays the role LiteLLM plays
+ * in the book: callers name a model, everything provider specific happens behind this class.
  *
  * <p>Every call waits for a free slot of its provider first, so the configured limit holds
  * across batches and single calls from different threads alike.
  */
 @Service
-public class LlmService {
+public class LlmClient {
 
 	private static final JsonMapper STRICT_JSON = JsonMapper.builder()
 		.enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
@@ -43,7 +43,7 @@ public class LlmService {
 
 	private final Map<Provider, Semaphore> slots = new EnumMap<>(Provider.class);
 
-	public LlmService(ModelRouter router, ConcurrencyProperties concurrency) {
+	public LlmClient(ModelRouter router, ConcurrencyProperties concurrency) {
 		this.router = router;
 		Arrays.stream(Provider.values())
 			.forEach(provider -> slots.put(provider, new Semaphore(concurrency.limit(provider))));
@@ -89,7 +89,7 @@ public class LlmService {
 			List<Future<T>> futures = batch.stream()
 				.map(messages -> executor.submit(() -> complete(model, messages, responseType)))
 				.toList();
-			return futures.stream().map(LlmService::result).toList();
+			return futures.stream().map(LlmClient::result).toList();
 		}
 	}
 

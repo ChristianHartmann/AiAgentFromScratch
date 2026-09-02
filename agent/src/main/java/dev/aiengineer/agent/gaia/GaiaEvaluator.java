@@ -3,7 +3,7 @@ package dev.aiengineer.agent.gaia;
 import dev.aiengineer.agent.llm.ChatMessage;
 import dev.aiengineer.agent.llm.LlmRefusalException;
 import dev.aiengineer.agent.llm.LlmResult;
-import dev.aiengineer.agent.llm.LlmService;
+import dev.aiengineer.agent.llm.LlmClient;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -21,11 +21,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class GaiaEvaluator {
 
-	private final LlmService llm;
+	private final LlmClient llm;
 
 	private final String systemPrompt;
 
-	public GaiaEvaluator(LlmService llm, @Value("classpath:prompts/gaia-system.txt") Resource systemPrompt) {
+	public GaiaEvaluator(LlmClient llm, @Value("classpath:prompts/gaia-system.txt") Resource systemPrompt) {
 		this.llm = llm;
 		this.systemPrompt = read(systemPrompt);
 	}

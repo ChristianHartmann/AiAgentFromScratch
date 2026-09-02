@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 import dev.aiengineer.agent.llm.ChatMessage;
 import dev.aiengineer.agent.llm.LlmRefusalException;
 import dev.aiengineer.agent.llm.LlmResult;
-import dev.aiengineer.agent.llm.LlmService;
+import dev.aiengineer.agent.llm.LlmClient;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -29,7 +29,7 @@ class GaiaEvaluatorTest {
 
 	private final GaiaProblem task = new GaiaProblem("t1", "What is the capital of France?", 1, "Paris", "");
 
-	private final LlmService llm = mock(LlmService.class);
+	private final LlmClient llm = mock(LlmClient.class);
 
 	private final GaiaEvaluator evaluator = new GaiaEvaluator(llm, new ByteArrayResource("system prompt".getBytes()));
 

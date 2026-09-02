@@ -17,14 +17,14 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.StructuredOutputChatOptions;
 
-class LlmServiceStructuredTest {
+class LlmClientStructuredTest {
 
 	record ContactDetails(String name, String email) {
 	}
 
 	private final ChatModel openAi = mock(ChatModel.class);
 
-	private final LlmService service = new LlmService(new ModelRouter(Map.of(Provider.OPENAI, openAi)), ConcurrencyProperties.defaults());
+	private final LlmClient service = new LlmClient(new ModelRouter(Map.of(Provider.OPENAI, openAi)), ConcurrencyProperties.defaults());
 
 	@Test
 	void convertsTheAnswerIntoARecord() {

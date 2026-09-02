@@ -8,7 +8,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import dev.aiengineer.agent.llm.LiveTests;
-import dev.aiengineer.agent.llm.LlmService;
+import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.ModelRouter;
 import dev.aiengineer.agent.tool.Toolbox;
 import dev.aiengineer.agent.tool.WebSearchTools;
@@ -28,7 +28,7 @@ class SimpleAgentLoopLiveTest {
 	private static final String MODEL = "google/gemini-3.6-flash";
 
 	@Autowired
-	private LlmService llm;
+	private LlmClient llm;
 
 	@Autowired
 	private ModelRouter router;

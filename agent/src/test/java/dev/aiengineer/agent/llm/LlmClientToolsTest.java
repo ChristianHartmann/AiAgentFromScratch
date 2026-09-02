@@ -24,7 +24,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.tool.ToolCallback;
 
-class LlmServiceToolsTest {
+class LlmClientToolsTest {
 
 	private static final String SCHEMA = "{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\"}}}";
 
@@ -36,7 +36,7 @@ class LlmServiceToolsTest {
 
 	private final ChatModel google = mock(ChatModel.class);
 
-	private final LlmService service = new LlmService(
+	private final LlmClient service = new LlmClient(
 		new ModelRouter(Map.of(Provider.OPENAI, openAi, Provider.GOOGLE, google)), ConcurrencyProperties.defaults());
 
 	@Test

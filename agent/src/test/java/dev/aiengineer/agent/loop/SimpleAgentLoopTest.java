@@ -13,7 +13,7 @@ import static org.mockito.Mockito.when;
 
 import dev.aiengineer.agent.llm.ChatMessage;
 import dev.aiengineer.agent.llm.LlmResponse;
-import dev.aiengineer.agent.llm.LlmService;
+import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.ToolCall;
 import dev.aiengineer.agent.tool.CalculatorTools;
 import dev.aiengineer.agent.tool.Toolbox;
@@ -25,7 +25,7 @@ class SimpleAgentLoopTest {
 
 	private static final String MODEL = "google/gemini-3.6-flash";
 
-	private final LlmService llm = mock(LlmService.class);
+	private final LlmClient llm = mock(LlmClient.class);
 
 	private final Toolbox toolbox = Toolbox.of(new CalculatorTools());
 

@@ -18,14 +18,14 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.Prompt;
 
-class LlmServiceParallelTest {
+class LlmClientParallelTest {
 
 	record Count(int value) {
 	}
 
 	private final ChatModel openAi = mock(ChatModel.class);
 
-	private final LlmService service = new LlmService(new ModelRouter(Map.of(Provider.OPENAI, openAi)),
+	private final LlmClient service = new LlmClient(new ModelRouter(Map.of(Provider.OPENAI, openAi)),
 		new ConcurrencyProperties(Map.of(Provider.OPENAI, 3)));
 
 	private final AtomicInteger inFlight = new AtomicInteger();

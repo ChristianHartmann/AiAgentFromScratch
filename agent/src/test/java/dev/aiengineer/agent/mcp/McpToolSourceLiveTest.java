@@ -3,7 +3,7 @@ package dev.aiengineer.agent.mcp;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.aiengineer.agent.llm.LiveTests;
-import dev.aiengineer.agent.llm.LlmService;
+import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.ModelRouter;
 import dev.aiengineer.agent.llm.ToolCall;
 import dev.aiengineer.agent.llm.ToolDefinition;
@@ -26,7 +26,7 @@ class McpToolSourceLiveTest {
 	private static final String MODEL = "google/gemini-3.6-flash";
 
 	@Autowired
-	private LlmService llm;
+	private LlmClient llm;
 
 	@Autowired
 	private ModelRouter router;

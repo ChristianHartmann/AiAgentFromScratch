@@ -3,7 +3,7 @@ package dev.aiengineer.agent.loop;
 import dev.aiengineer.agent.llm.ChatMessage;
 import dev.aiengineer.agent.llm.Conversation;
 import dev.aiengineer.agent.llm.LlmResponse;
-import dev.aiengineer.agent.llm.LlmService;
+import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.ToolCall;
 import dev.aiengineer.agent.tool.Toolbox;
 
@@ -16,15 +16,15 @@ public class SimpleAgentLoop {
 
 	public static final int DEFAULT_MAX_TURNS = 10;
 
-	private final LlmService llm;
+	private final LlmClient llm;
 
 	private final int maxTurns;
 
-	public SimpleAgentLoop(LlmService llm) {
+	public SimpleAgentLoop(LlmClient llm) {
 		this(llm, DEFAULT_MAX_TURNS);
 	}
 
-	public SimpleAgentLoop(LlmService llm, int maxTurns) {
+	public SimpleAgentLoop(LlmClient llm, int maxTurns) {
 		this.llm = llm;
 		this.maxTurns = maxTurns;
 	}

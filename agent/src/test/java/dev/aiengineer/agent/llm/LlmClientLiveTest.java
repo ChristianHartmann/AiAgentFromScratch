@@ -19,10 +19,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 	"spring.ai.anthropic.api-key=${ANTHROPIC_API_KEY:not-set}",
 	"spring.ai.google.genai.api-key=${GEMINI_API_KEY:not-set}"
 })
-class LlmServiceLiveTest {
+class LlmClientLiveTest {
 
 	@Autowired
-	private LlmService service;
+	private LlmClient service;
 
 	@Autowired
 	private ModelRouter router;
