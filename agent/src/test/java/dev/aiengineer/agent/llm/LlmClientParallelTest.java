@@ -57,7 +57,7 @@ class LlmClientParallelTest {
 
 		try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
 			IntStream.range(0, 20).forEach(i -> executor.submit(
-				() -> service.complete("gpt-5-mini", List.of(ChatMessage.user("Question " + i)))));
+				() -> service.complete("gpt-5-mini", List.of(ContentItem.user("Question " + i)))));
 		}
 
 		assertThat(peak.get()).isLessThanOrEqualTo(3);
@@ -88,8 +88,8 @@ class LlmClientParallelTest {
 			String number = prompt.getInstructions().getLast().getText();
 			return answer("{\"value\":" + number + "}");
 		});
-		List<List<ChatMessage>> batch = IntStream.range(0, 10)
-			.mapToObj(i -> List.of(ChatMessage.user(String.valueOf(i))))
+		List<List<ContentItem>> batch = IntStream.range(0, 10)
+			.mapToObj(i -> List.of(ContentItem.user(String.valueOf(i))))
 			.toList();
 
 		List<LlmResult<Count>> results = service.completeAll("gpt-5-mini", batch, Count.class);
@@ -107,9 +107,9 @@ class LlmClientParallelTest {
 		});
 	}
 
-	private static List<List<ChatMessage>> questions(int count) {
+	private static List<List<ContentItem>> questions(int count) {
 		return IntStream.range(0, count)
-			.mapToObj(i -> List.of(ChatMessage.user("Question " + i)))
+			.mapToObj(i -> List.of(ContentItem.user("Question " + i)))
 			.toList();
 	}
 

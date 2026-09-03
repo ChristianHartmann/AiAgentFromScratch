@@ -11,10 +11,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import dev.aiengineer.agent.llm.ChatMessage;
-import dev.aiengineer.agent.llm.LlmResponse;
+import dev.aiengineer.agent.llm.ContentItem;
 import dev.aiengineer.agent.llm.LlmClient;
+import dev.aiengineer.agent.llm.LlmResponse;
+import dev.aiengineer.agent.llm.Message;
+import dev.aiengineer.agent.llm.Role;
 import dev.aiengineer.agent.llm.ToolCall;
+import dev.aiengineer.agent.llm.ToolResult;
 import dev.aiengineer.agent.tool.CalculatorTools;
 import dev.aiengineer.agent.tool.Toolbox;
 import java.util.List;
@@ -61,10 +64,11 @@ class SimpleAgentLoopTest {
 
 		assertThat(answer).isEqualTo("1234 x 5678 = 7006652");
 		assertThat(historyOfCall(2)).containsExactly(
-			ChatMessage.system("system"),
-			ChatMessage.user("What is 1234 x 5678?"),
-			ChatMessage.assistant("", List.of(multiply)),
-			ChatMessage.toolResult(multiply, "7006652.0"));
+			ContentItem.system("system"),
+			ContentItem.user("What is 1234 x 5678?"),
+			new Message(Role.ASSISTANT, ""),
+			multiply,
+			ToolResult.success(multiply, "7006652.0"));
 	}
 
 	@Test
@@ -76,8 +80,8 @@ class SimpleAgentLoopTest {
 		loop().run(MODEL, "system", "Two calculations", toolbox);
 
 		assertThat(historyOfCall(2)).endsWith(
-			ChatMessage.toolResult(multiply, "7006652.0"),
-			ChatMessage.toolResult(add, "3.0"));
+			ToolResult.success(multiply, "7006652.0"),
+			ToolResult.success(add, "3.0"));
 	}
 
 	@Test
@@ -110,8 +114,8 @@ class SimpleAgentLoopTest {
 	}
 
 	@SuppressWarnings("unchecked")
-	private List<ChatMessage> historyOfCall(int number) {
-		ArgumentCaptor<List<ChatMessage>> history = ArgumentCaptor.forClass(List.class);
+	private List<ContentItem> historyOfCall(int number) {
+		ArgumentCaptor<List<ContentItem>> history = ArgumentCaptor.forClass(List.class);
 		verify(llm, atLeast(number)).respond(eq(MODEL), history.capture(), anyList());
 		return history.getAllValues().get(number - 1);
 	}

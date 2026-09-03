@@ -12,7 +12,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
@@ -49,7 +48,7 @@ public class LlmClient {
 			.forEach(provider -> slots.put(provider, new Semaphore(concurrency.limit(provider))));
 	}
 
-	public String complete(String model, List<ChatMessage> messages) {
+	public String complete(String model, List<ContentItem> messages) {
 		return textOf(model, call(model, messages, router.options(model)));
 	}
 
@@ -57,7 +56,7 @@ public class LlmClient {
 	 * Asks for an answer in the shape of the given record. The JSON schema of the record
 	 * goes to the provider's native structured output, the answer is converted back.
 	 */
-	public <T> T complete(String model, List<ChatMessage> messages, Class<T> responseType) {
+	public <T> T complete(String model, List<ContentItem> messages, Class<T> responseType) {
 		BeanOutputConverter<T> converter = new BeanOutputConverter<>(responseType);
 		String answer = textOf(model, call(model, messages, router.options(model, converter.getJsonSchema())));
 		return converter.convert(answer);
@@ -67,7 +66,7 @@ public class LlmClient {
 	 * Offers the tools to the model and returns its answer without running any tool: either
 	 * text, or the tool calls the caller has to execute and feed back as tool results.
 	 */
-	public LlmResponse respond(String model, List<ChatMessage> messages, List<ToolDefinition> tools) {
+	public LlmResponse respond(String model, List<ContentItem> messages, List<ToolDefinition> tools) {
 		Generation generation = call(model, messages, router.options(model, tools));
 		AssistantMessage output = generation.getOutput();
 		List<ToolCall> toolCalls = output.getToolCalls().stream()
@@ -84,7 +83,7 @@ public class LlmClient {
 	 * Sends every conversation of the batch concurrently and returns the results in the
 	 * order of the batch. A failing call ends up as a failed result, the others go on.
 	 */
-	public <T> List<LlmResult<T>> completeAll(String model, List<List<ChatMessage>> batch, Class<T> responseType) {
+	public <T> List<LlmResult<T>> completeAll(String model, List<List<ContentItem>> batch, Class<T> responseType) {
 		try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
 			List<Future<T>> futures = batch.stream()
 				.map(messages -> executor.submit(() -> complete(model, messages, responseType)))
@@ -102,7 +101,7 @@ public class LlmClient {
 		return call.id() == null || call.id().isBlank() ? "call_" + UUID.randomUUID() : call.id();
 	}
 
-	private Generation call(String model, List<ChatMessage> messages, ChatOptions options) {
+	private Generation call(String model, List<ContentItem> messages, ChatOptions options) {
 		Semaphore slot = slots.get(router.provider(model));
 		try {
 			slot.acquire();
@@ -142,35 +141,83 @@ public class LlmClient {
 	}
 
 	/**
-	 * Translates our messages into Spring AI's. Consecutive tool results belong to one answer
-	 * of the model and go back together in a single tool response, as Gemini expects it.
+	 * Translates our content items into Spring AI's messages. An assistant message and the
+	 * tool calls that follow it become one message, as the book merges text and tool calls in
+	 * build_messages. Consecutive tool results belong to one answer of the model and go back
+	 * together in a single tool response, as Gemini expects it.
 	 */
-	private static List<Message> toSpringAi(Provider provider, List<ChatMessage> messages) {
-		List<Message> result = new ArrayList<>();
-		List<ToolResponseMessage.ToolResponse> pendingToolResults = new ArrayList<>();
-		for (ChatMessage message : messages) {
-			if (message instanceof ChatMessage.ToolResultMessage toolResult) {
-				String content = provider == Provider.GOOGLE ? asJsonDocument(toolResult.content()) : toolResult.content();
-				pendingToolResults.add(new ToolResponseMessage.ToolResponse(
-						toolResult.toolCallId(), toolResult.toolName(), content));
-				continue;
+	private static List<org.springframework.ai.chat.messages.Message> toSpringAi(Provider provider,
+			List<ContentItem> contents) {
+		List<org.springframework.ai.chat.messages.Message> result = new ArrayList<>();
+		PendingAssistant assistant = null;
+		List<ToolResponseMessage.ToolResponse> toolResults = new ArrayList<>();
+		for (ContentItem item : contents) {
+			if (!(item instanceof ToolResult)) {
+				flushToolResults(toolResults, result);
 			}
-			flush(pendingToolResults, result);
-			result.add(switch (message) {
-				case ChatMessage.SystemMessage system -> new SystemMessage(system.content());
-				case ChatMessage.UserMessage user -> new UserMessage(user.content());
-				case ChatMessage.AssistantMessage assistant -> AssistantMessage.builder()
-					.content(assistant.content())
-					.properties(assistant.providerState())
-					.toolCalls(assistant.toolCalls().stream()
-						.map(call -> new AssistantMessage.ToolCall(call.id(), "function", call.name(), call.arguments()))
-						.toList())
-					.build();
-				case ChatMessage.ToolResultMessage _ -> throw new IllegalStateException("handled above");
-			});
+			if (!(item instanceof ToolCall) && assistant != null) {
+				result.add(assistant.build());
+				assistant = null;
+			}
+			switch (item) {
+				case Message message when message.role() == Role.ASSISTANT -> assistant = new PendingAssistant(message);
+				case Message message when message.role() == Role.SYSTEM -> result.add(new SystemMessage(message.content()));
+				case Message message -> result.add(new UserMessage(message.content()));
+				case ToolCall call -> {
+					if (assistant == null) {
+						assistant = new PendingAssistant(new Message(Role.ASSISTANT, ""));
+					}
+					assistant.toolCalls.add(new AssistantMessage.ToolCall(call.id(), "function", call.name(), call.arguments()));
+				}
+				case ToolResult toolResult -> toolResults.add(new ToolResponseMessage.ToolResponse(
+						toolResult.toolCallId(), toolResult.name(), textFor(provider, toolResult.content())));
+			}
 		}
-		flush(pendingToolResults, result);
+		if (assistant != null) {
+			result.add(assistant.build());
+		}
+		flushToolResults(toolResults, result);
 		return result;
+	}
+
+	private static final class PendingAssistant {
+
+		private final Message message;
+
+		private final List<AssistantMessage.ToolCall> toolCalls = new ArrayList<>();
+
+		PendingAssistant(Message message) {
+			this.message = message;
+		}
+
+		AssistantMessage build() {
+			return AssistantMessage.builder()
+				.content(message.content())
+				.properties(message.providerState())
+				.toolCalls(toolCalls)
+				.build();
+		}
+	}
+
+	/**
+	 * Tool results reach the model as text: strings as they are, other objects as JSON, null
+	 * as empty text. Gemini additionally needs every result to be a JSON document.
+	 */
+	private static String textFor(Provider provider, Object content) {
+		String text = switch (content) {
+			case null -> "";
+			case String string -> string;
+			default -> STRICT_JSON.writeValueAsString(content);
+		};
+		return provider == Provider.GOOGLE ? asJsonDocument(text) : text;
+	}
+
+	private static void flushToolResults(List<ToolResponseMessage.ToolResponse> toolResults,
+			List<org.springframework.ai.chat.messages.Message> result) {
+		if (!toolResults.isEmpty()) {
+			result.add(ToolResponseMessage.builder().responses(List.copyOf(toolResults)).build());
+			toolResults.clear();
+		}
 	}
 
 	/**
@@ -190,12 +237,5 @@ public class LlmClient {
 			}
 		}
 		return STRICT_JSON.writeValueAsString(content);
-	}
-
-	private static void flush(List<ToolResponseMessage.ToolResponse> pendingToolResults, List<Message> result) {
-		if (!pendingToolResults.isEmpty()) {
-			result.add(ToolResponseMessage.builder().responses(List.copyOf(pendingToolResults)).build());
-			pendingToolResults.clear();
-		}
 	}
 }

@@ -14,8 +14,8 @@ class ConversationTest {
 
 		assertThat(conversation.messages())
 			.containsExactly(
-				ChatMessage.system("You are helpful."),
-				ChatMessage.user("My name is Max."));
+				ContentItem.system("You are helpful."),
+				ContentItem.user("My name is Max."));
 	}
 
 	@Test
@@ -26,7 +26,7 @@ class ConversationTest {
 		conversation.addAssistant("Hello Max.");
 		conversation.addUser("What is my name?");
 
-		assertThat(conversation.messages()).extracting(ChatMessage::role)
+		assertThat(conversation.messages()).extracting(item -> ((Message) item).role())
 			.containsExactly(Role.USER, Role.ASSISTANT, Role.USER);
 	}
 

@@ -7,10 +7,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import dev.aiengineer.agent.llm.ChatMessage;
+import dev.aiengineer.agent.llm.ContentItem;
+import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.LlmRefusalException;
 import dev.aiengineer.agent.llm.LlmResult;
-import dev.aiengineer.agent.llm.LlmClient;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -76,11 +76,11 @@ class GaiaEvaluatorTest {
 		evaluator.evaluate(List.of(task), List.of(GEMINI));
 
 		@SuppressWarnings("unchecked")
-		ArgumentCaptor<List<List<ChatMessage>>> batch = ArgumentCaptor.forClass(List.class);
+		ArgumentCaptor<List<List<ContentItem>>> batch = ArgumentCaptor.forClass(List.class);
 		verify(llm).completeAll(eq(GEMINI), batch.capture(), eq(GaiaOutput.class));
 		assertThat(batch.getValue()).singleElement().isEqualTo(List.of(
-			ChatMessage.system("system prompt"),
-			ChatMessage.user("What is the capital of France?")));
+			ContentItem.system("system prompt"),
+			ContentItem.user("What is the capital of France?")));
 	}
 
 	@Test

@@ -43,7 +43,7 @@ class LlmClientToolsTest {
 	void sendsToolDefinitionsWithThePrompt() {
 		answerWithText("ok");
 
-		service.respond("gpt-5-mini", List.of(ChatMessage.user("Hi")), List.of(search));
+		service.respond("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search));
 
 		List<ToolCallback> callbacks = ((ToolCallingChatOptions) capturedPrompt().getOptions()).getToolCallbacks();
 		assertThat(callbacks).singleElement().satisfies(callback -> {
@@ -57,7 +57,7 @@ class LlmClientToolsTest {
 	void neverLetsSpringAiExecuteATool() {
 		answerWithText("ok");
 
-		service.respond("gpt-5-mini", List.of(ChatMessage.user("Hi")), List.of(search));
+		service.respond("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search));
 
 		ToolCallback callback = ((ToolCallingChatOptions) capturedPrompt().getOptions()).getToolCallbacks().getFirst();
 		assertThatThrownBy(() -> callback.call("{}")).isInstanceOf(UnsupportedOperationException.class);
@@ -70,7 +70,7 @@ class LlmClientToolsTest {
 			.toolCalls(List.of(new AssistantMessage.ToolCall("call_1", "function", "searchWeb", "{\"query\":\"Kipchoge\"}")))
 			.build()));
 
-		LlmResponse response = service.respond("gpt-5-mini", List.of(ChatMessage.user("Hi")), List.of(search));
+		LlmResponse response = service.respond("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search));
 
 		assertThat(response.hasToolCalls()).isTrue();
 		assertThat(response.toolCalls()).containsExactly(call);
@@ -86,7 +86,7 @@ class LlmClientToolsTest {
 				new AssistantMessage.ToolCall(null, "function", "searchWeb", "{\"query\":\"Kiptum\"}")))
 			.build()));
 
-		LlmResponse response = service.respond("gpt-5-mini", List.of(ChatMessage.user("Hi")), List.of(search));
+		LlmResponse response = service.respond("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search));
 
 		assertThat(response.toolCalls()).extracting(ToolCall::id)
 			.allSatisfy(id -> assertThat(id).startsWith("call_").hasSizeGreaterThan("call_".length()))
@@ -106,8 +106,8 @@ class LlmClientToolsTest {
 		conversation.addUser("Search");
 
 		LlmResponse first = service.respond("gpt-5-mini", conversation.messages(), List.of(search));
-		conversation.add(first.toMessage());
-		conversation.add(ChatMessage.toolResult(first.toolCalls().getFirst(), "result"));
+		first.toContents().forEach(conversation::add);
+		conversation.add(ToolResult.success(first.toolCalls().getFirst(), "result"));
 		service.respond("gpt-5-mini", conversation.messages(), List.of(search));
 
 		ArgumentCaptor<Prompt> prompts = ArgumentCaptor.forClass(Prompt.class);
@@ -120,7 +120,7 @@ class LlmClientToolsTest {
 	void returnsTextWhenTheModelAnswersDirectly() {
 		answerWithText("Seoul");
 
-		LlmResponse response = service.respond("gpt-5-mini", List.of(ChatMessage.user("Capital?")), List.of(search));
+		LlmResponse response = service.respond("gpt-5-mini", List.of(ContentItem.user("Capital?")), List.of(search));
 
 		assertThat(response.hasToolCalls()).isFalse();
 		assertThat(response.text()).isEqualTo("Seoul");
@@ -131,9 +131,9 @@ class LlmClientToolsTest {
 		answerWithText("done");
 
 		service.respond("gpt-5-mini", List.of(
-			ChatMessage.user("Search"),
-			ChatMessage.assistant("", List.of(call)),
-			ChatMessage.toolResult(call, "Kipchoge ran 2:01:09")), List.of(search));
+			ContentItem.user("Search"),
+			call,
+			ToolResult.success(call, "Kipchoge ran 2:01:09")), List.of(search));
 
 		List<Message> instructions = capturedPrompt().getInstructions();
 		assertThat(instructions).extracting(Message::getMessageType)
@@ -154,10 +154,10 @@ class LlmClientToolsTest {
 		ToolCall second = new ToolCall("call_2", "searchWeb", "{\"query\":\"Kiptum\"}");
 
 		service.respond("gpt-5-mini", List.of(
-			ChatMessage.user("Search twice"),
-			ChatMessage.assistant("", List.of(call, second)),
-			ChatMessage.toolResult(call, "first"),
-			ChatMessage.toolResult(second, "second")), List.of(search));
+			ContentItem.user("Search twice"),
+			call, second,
+			ToolResult.success(call, "first"),
+			ToolResult.success(second, "second")), List.of(search));
 
 		List<Message> instructions = capturedPrompt().getInstructions();
 		assertThat(instructions).extracting(Message::getMessageType)
@@ -192,9 +192,9 @@ class LlmClientToolsTest {
 		answerWithText("done");
 
 		service.respond("gpt-5-mini", List.of(
-			ChatMessage.user("Search"),
-			ChatMessage.assistant("", List.of(call)),
-			ChatMessage.toolResult(call, "Suggestions: nobel prize 2025")), List.of(search));
+			ContentItem.user("Search"),
+			call,
+			ToolResult.success(call, "Suggestions: nobel prize 2025")), List.of(search));
 
 		assertThat(((ToolResponseMessage) capturedPrompt().getInstructions().get(2)).getResponses().getFirst()
 			.responseData()).isEqualTo("Suggestions: nobel prize 2025");
@@ -204,7 +204,7 @@ class LlmClientToolsTest {
 	void reportsARefusalOnlyWhenThereIsNeitherTextNorToolCalls() {
 		answerWithText("");
 
-		assertThatThrownBy(() -> service.respond("gpt-5-mini", List.of(ChatMessage.user("Hi")), List.of(search)))
+		assertThatThrownBy(() -> service.respond("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search)))
 			.isInstanceOf(LlmRefusalException.class);
 	}
 
@@ -215,9 +215,9 @@ class LlmClientToolsTest {
 		when(google.call(any(Prompt.class))).thenReturn(response(new AssistantMessage("done")));
 
 		service.respond("google/gemini-3.6-flash", List.of(
-			ChatMessage.user("Search"),
-			ChatMessage.assistant("", List.of(call)),
-			ChatMessage.toolResult(call, content)), List.of(search));
+			ContentItem.user("Search"),
+			call,
+			ToolResult.success(call, content)), List.of(search));
 
 		ArgumentCaptor<Prompt> prompts = ArgumentCaptor.forClass(Prompt.class);
 		verify(google, atLeastOnce()).call(prompts.capture());

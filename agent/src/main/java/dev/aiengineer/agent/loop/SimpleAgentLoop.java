@@ -1,10 +1,11 @@
 package dev.aiengineer.agent.loop;
 
-import dev.aiengineer.agent.llm.ChatMessage;
+import dev.aiengineer.agent.llm.ContentItem;
 import dev.aiengineer.agent.llm.Conversation;
-import dev.aiengineer.agent.llm.LlmResponse;
 import dev.aiengineer.agent.llm.LlmClient;
+import dev.aiengineer.agent.llm.LlmResponse;
 import dev.aiengineer.agent.llm.ToolCall;
+import dev.aiengineer.agent.llm.ToolResult;
 import dev.aiengineer.agent.tool.Toolbox;
 
 /**
@@ -37,9 +38,11 @@ public class SimpleAgentLoop {
 			if (!response.hasToolCalls()) {
 				return response.text();
 			}
-			conversation.add(response.toMessage());
+			for (ContentItem item : response.toContents()) {
+				conversation.add(item);
+			}
 			for (ToolCall call : response.toolCalls()) {
-				conversation.add(ChatMessage.toolResult(call, toolbox.execute(call)));
+				conversation.add(ToolResult.success(call, toolbox.execute(call)));
 			}
 		}
 		throw new IllegalStateException("No final answer after " + maxTurns + " turns");

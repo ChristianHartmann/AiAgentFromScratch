@@ -49,7 +49,7 @@ class LlmClientLiveTest {
 		LiveTests.assumeKeyPresentFor(router, model);
 
 		CityFacts facts = service.complete(model,
-			List.of(ChatMessage.user("Name the capital of France, its country and its population.")),
+			List.of(ContentItem.user("Name the capital of France, its country and its population.")),
 			CityFacts.class);
 
 		assertThat(facts.city()).containsIgnoringCase("Paris");
@@ -64,9 +64,9 @@ class LlmClientLiveTest {
 	@ValueSource(strings = { "google/gemini-3.6-flash", "gpt-5-mini", "anthropic/claude-haiku-4-5" })
 	void answersABatchConcurrently(String model) {
 		LiveTests.assumeKeyPresentFor(router, model);
-		List<List<ChatMessage>> batch = List.of(
-			List.of(ChatMessage.user("What is 2 + 2?")),
-			List.of(ChatMessage.user("What is 3 + 3?")));
+		List<List<ContentItem>> batch = List.of(
+			List.of(ContentItem.user("What is 2 + 2?")),
+			List.of(ContentItem.user("What is 3 + 3?")));
 
 		List<LlmResult<Sum>> results = service.completeAll(model, batch, Sum.class);
 

@@ -47,7 +47,7 @@ class ToolCallingLiveTest {
 		LiveTests.assumeKeyPresentFor(router, MODEL);
 
 		LlmResponse response = service.respond(MODEL,
-			List.of(ChatMessage.user("What is the capital of South Korea?")), List.of(CALCULATOR));
+			List.of(ContentItem.user("What is the capital of South Korea?")), List.of(CALCULATOR));
 
 		assertThat(response.hasToolCalls()).isFalse();
 		assertThat(response.text()).containsIgnoringCase("Seoul");
@@ -66,8 +66,8 @@ class ToolCallingLiveTest {
 			assertThat(call.name()).isEqualTo("calculator");
 			assertThat(call.arguments()).contains("multiply").contains("1234").contains("5678");
 		});
-		conversation.add(first.toMessage());
-		conversation.add(ChatMessage.toolResult(first.toolCalls().getFirst(), "7006652"));
+		first.toContents().forEach(conversation::add);
+		conversation.add(ToolResult.success(first.toolCalls().getFirst(), "7006652"));
 
 		LlmResponse second = service.respond(MODEL, conversation.messages(), List.of(CALCULATOR));
 

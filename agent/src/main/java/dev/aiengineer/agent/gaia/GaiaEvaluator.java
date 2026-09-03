@@ -1,9 +1,9 @@
 package dev.aiengineer.agent.gaia;
 
-import dev.aiengineer.agent.llm.ChatMessage;
+import dev.aiengineer.agent.llm.ContentItem;
+import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.LlmRefusalException;
 import dev.aiengineer.agent.llm.LlmResult;
-import dev.aiengineer.agent.llm.LlmClient;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -46,8 +46,8 @@ public class GaiaEvaluator {
 	}
 
 	private List<GaiaResult> evaluate(List<GaiaProblem> tasks, String model) {
-		List<List<ChatMessage>> batch = tasks.stream()
-			.map(task -> List.of(ChatMessage.system(systemPrompt), ChatMessage.user(task.question())))
+		List<List<ContentItem>> batch = tasks.stream()
+			.map(task -> List.of(ContentItem.system(systemPrompt), ContentItem.user(task.question())))
 			.toList();
 		List<LlmResult<GaiaOutput>> outputs = llm.completeAll(model, batch, GaiaOutput.class);
 		return IntStream.range(0, tasks.size())

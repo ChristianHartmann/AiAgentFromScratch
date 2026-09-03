@@ -33,7 +33,7 @@ class LlmClientTest {
 	void returnsTheTextOfTheAnswer() {
 		answerWith(openAi, "Paris");
 
-		String answer = service.complete("gpt-5-mini", List.of(ChatMessage.user("What is the capital of France?")));
+		String answer = service.complete("gpt-5-mini", List.of(ContentItem.user("What is the capital of France?")));
 
 		assertThat(answer).isEqualTo("Paris");
 	}
@@ -43,10 +43,10 @@ class LlmClientTest {
 		answerWith(openAi, "ok");
 
 		service.complete("gpt-5-mini", List.of(
-			ChatMessage.system("You are helpful."),
-			ChatMessage.user("Hello"),
-			ChatMessage.assistant("Hello there"),
-			ChatMessage.user("How are you?")));
+			ContentItem.system("You are helpful."),
+			ContentItem.user("Hello"),
+			ContentItem.assistant("Hello there"),
+			ContentItem.user("How are you?")));
 
 		assertThat(capturedPrompt(openAi).getInstructions()).extracting(Message::getMessageType)
 			.containsExactly(MessageType.SYSTEM, MessageType.USER, MessageType.ASSISTANT, MessageType.USER);
@@ -56,7 +56,7 @@ class LlmClientTest {
 	void sendsTheModelNameWithoutProviderPrefix() {
 		answerWith(google, "ok");
 
-		service.complete("google/gemini-3.6-flash", List.of(ChatMessage.user("Hello")));
+		service.complete("google/gemini-3.6-flash", List.of(ContentItem.user("Hello")));
 
 		assertThat(capturedPrompt(google).getOptions().getModel()).isEqualTo("gemini-3.6-flash");
 	}
@@ -65,7 +65,7 @@ class LlmClientTest {
 	void routesTheCallToTheProviderOfTheModel() {
 		answerWith(google, "ok");
 
-		service.complete("google/gemini-3.6-flash", List.of(ChatMessage.user("Hello")));
+		service.complete("google/gemini-3.6-flash", List.of(ContentItem.user("Hello")));
 
 		verify(openAi, org.mockito.Mockito.never()).call(any(Prompt.class));
 	}
@@ -75,7 +75,7 @@ class LlmClientTest {
 		when(openAi.call(any(Prompt.class))).thenReturn(new ChatResponse(List.of(new Generation(
 			new AssistantMessage(""), ChatGenerationMetadata.builder().finishReason("refusal").build()))));
 
-		assertThatThrownBy(() -> service.complete("gpt-5-mini", List.of(ChatMessage.user("Hello"))))
+		assertThatThrownBy(() -> service.complete("gpt-5-mini", List.of(ContentItem.user("Hello"))))
 			.isInstanceOfSatisfying(LlmRefusalException.class,
 				refusal -> assertThat(refusal.finishReason()).isEqualTo("refusal"))
 			.hasMessageContaining("gpt-5-mini");

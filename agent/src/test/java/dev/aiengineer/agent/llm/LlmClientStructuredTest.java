@@ -31,7 +31,7 @@ class LlmClientStructuredTest {
 		answerWith("{\"name\":\"John Smith\",\"email\":\"john@example.com\"}");
 
 		ContactDetails details = service.complete("gpt-5-mini",
-			List.of(ChatMessage.user("My name is John Smith, my email is john@example.com.")),
+			List.of(ContentItem.user("My name is John Smith, my email is john@example.com.")),
 			ContactDetails.class);
 
 		assertThat(details).isEqualTo(new ContactDetails("John Smith", "john@example.com"));
@@ -41,7 +41,7 @@ class LlmClientStructuredTest {
 	void sendsTheJsonSchemaOfTheRecord() {
 		answerWith("{\"name\":\"a\",\"email\":\"b\"}");
 
-		service.complete("gpt-5-mini", List.of(ChatMessage.user("whatever")), ContactDetails.class);
+		service.complete("gpt-5-mini", List.of(ContentItem.user("whatever")), ContactDetails.class);
 
 		ArgumentCaptor<Prompt> prompt = ArgumentCaptor.forClass(Prompt.class);
 		verify(openAi).call(prompt.capture());
