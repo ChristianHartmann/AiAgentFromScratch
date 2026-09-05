@@ -82,11 +82,29 @@ class ModelRouterTest {
 	void putsTheToolsIntoTheOptionsOfEveryProvider(String model) {
 		ToolDefinition tool = new ToolDefinition("searchWeb", "Search the web", "{\"type\":\"object\"}");
 
-		ToolCallingChatOptions options = (ToolCallingChatOptions) router.options(model, List.of(tool));
+		ToolCallingChatOptions options = (ToolCallingChatOptions) router.options(model, List.of(tool), ToolChoice.AUTO);
 
 		assertThat(options.getToolCallbacks()).extracting(callback -> callback.getToolDefinition().name())
 			.containsExactly("searchWeb");
 		assertThat(options.getModel()).isEqualTo(router.modelId(model));
+	}
+
+	@Test
+	void forcesAToolCallForEveryProvider() {
+		ToolDefinition tool = new ToolDefinition("searchWeb", "Search the web", "{\"type\":\"object\"}");
+
+		assertThat(((OpenAiChatOptions) router.options("gpt-5-mini", List.of(tool), ToolChoice.REQUIRED)).getToolChoice())
+			.isEqualTo("required");
+		assertThat(((AnthropicChatOptions) router.options("anthropic/claude-haiku-4-5", List.of(tool), ToolChoice.REQUIRED))
+			.getToolChoice().isAny()).isTrue();
+		assertThat(((GoogleGenAiChatOptions) router.options("google/gemini-3.6-flash", List.of(tool), ToolChoice.REQUIRED))
+			.getToolChoice().mode()).isEqualTo(GoogleGenAiChatOptions.ToolChoice.Mode.ANY);
+	}
+
+	@Test
+	void setsNoToolChoiceWhenNoneIsGiven() {
+		assertThat(((GoogleGenAiChatOptions) router.options("google/gemini-3.6-flash", List.of(), null)).getToolChoice())
+			.isNull();
 	}
 
 	@Test

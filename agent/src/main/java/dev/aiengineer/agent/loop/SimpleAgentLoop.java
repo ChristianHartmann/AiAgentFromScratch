@@ -1,10 +1,11 @@
 package dev.aiengineer.agent.loop;
 
-import dev.aiengineer.agent.llm.ContentItem;
 import dev.aiengineer.agent.llm.Conversation;
 import dev.aiengineer.agent.llm.LlmClient;
+import dev.aiengineer.agent.llm.LlmRequest;
 import dev.aiengineer.agent.llm.LlmResponse;
 import dev.aiengineer.agent.llm.ToolCall;
+import dev.aiengineer.agent.llm.ToolChoice;
 import dev.aiengineer.agent.llm.ToolResult;
 import dev.aiengineer.agent.tool.Toolbox;
 
@@ -34,13 +35,15 @@ public class SimpleAgentLoop {
 		Conversation conversation = Conversation.withSystemPrompt(systemPrompt);
 		conversation.addUser(question);
 		for (int turn = 1; turn <= maxTurns; turn++) {
-			LlmResponse response = llm.respond(model, conversation.messages(), toolbox.definitions());
+			LlmRequest request = new LlmRequest(model);
+			request.contents().addAll(conversation.messages());
+			request.tools().addAll(toolbox.definitions());
+			request.toolChoice(ToolChoice.AUTO);
+			LlmResponse response = llm.generate(request);
 			if (!response.hasToolCalls()) {
 				return response.text();
 			}
-			for (ContentItem item : response.toContents()) {
-				conversation.add(item);
-			}
+			response.content().forEach(conversation::add);
 			for (ToolCall call : response.toolCalls()) {
 				conversation.add(ToolResult.success(call, toolbox.execute(call)));
 			}

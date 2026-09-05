@@ -15,6 +15,7 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
@@ -49,7 +50,7 @@ public class LlmClient {
 	}
 
 	public String complete(String model, List<ContentItem> messages) {
-		return textOf(model, call(model, messages, router.options(model)));
+		return textOf(model, call(model, messages, router.options(model)).getResult());
 	}
 
 	/**
@@ -58,25 +59,34 @@ public class LlmClient {
 	 */
 	public <T> T complete(String model, List<ContentItem> messages, Class<T> responseType) {
 		BeanOutputConverter<T> converter = new BeanOutputConverter<>(responseType);
-		String answer = textOf(model, call(model, messages, router.options(model, converter.getJsonSchema())));
+		String answer = textOf(model,
+				call(model, messages, router.options(model, converter.getJsonSchema())).getResult());
 		return converter.convert(answer);
 	}
 
 	/**
-	 * Offers the tools to the model and returns its answer without running any tool: either
-	 * text, or the tool calls the caller has to execute and feed back as tool results.
+	 * Sends the request and returns the answer without running any tool: an assistant
+	 * message with the text and the provider state, followed by the tool calls, if any.
 	 */
-	public LlmResponse respond(String model, List<ContentItem> messages, List<ToolDefinition> tools) {
-		Generation generation = call(model, messages, router.options(model, tools));
+	public LlmResponse generate(LlmRequest request) {
+		List<ContentItem> contents = new ArrayList<>();
+		request.instructions().forEach(instruction -> contents.add(ContentItem.system(instruction)));
+		contents.addAll(request.contents());
+		ChatOptions options = router.options(request.model(), request.tools(), request.toolChoice());
+		ChatResponse response = call(request.model(), contents, options);
+		Generation generation = response.getResult();
 		AssistantMessage output = generation.getOutput();
+		String text = output.getText() == null ? "" : output.getText();
 		List<ToolCall> toolCalls = output.getToolCalls().stream()
 			.map(call -> new ToolCall(idOf(call), call.name(), call.arguments()))
 			.toList();
-		String text = output.getText() == null ? "" : output.getText();
 		if (text.isBlank() && toolCalls.isEmpty()) {
-			throw new LlmRefusalException(model, generation.getMetadata().getFinishReason());
+			throw new LlmRefusalException(request.model(), generation.getMetadata().getFinishReason());
 		}
-		return new LlmResponse(text, toolCalls, output.getMetadata());
+		List<ContentItem> answer = new ArrayList<>();
+		answer.add(new Message(Role.ASSISTANT, text, output.getMetadata()));
+		answer.addAll(toolCalls);
+		return new LlmResponse(answer, usageOf(response));
 	}
 
 	/**
@@ -101,7 +111,7 @@ public class LlmClient {
 		return call.id() == null || call.id().isBlank() ? "call_" + UUID.randomUUID() : call.id();
 	}
 
-	private Generation call(String model, List<ContentItem> messages, ChatOptions options) {
+	private ChatResponse call(String model, List<ContentItem> messages, ChatOptions options) {
 		Semaphore slot = slots.get(router.provider(model));
 		try {
 			slot.acquire();
@@ -112,11 +122,20 @@ public class LlmClient {
 		}
 		try {
 			Prompt prompt = new Prompt(toSpringAi(router.provider(model), messages), options);
-			return router.chatModel(model).call(prompt).getResult();
+			return router.chatModel(model).call(prompt);
 		}
 		finally {
 			slot.release();
 		}
+	}
+
+	private static Usage usageOf(ChatResponse response) {
+		if (response.getMetadata() == null || response.getMetadata().getUsage() == null) {
+			return Usage.NONE;
+		}
+		org.springframework.ai.chat.metadata.Usage usage = response.getMetadata().getUsage();
+		return new Usage(usage.getPromptTokens() == null ? 0 : usage.getPromptTokens(),
+				usage.getCompletionTokens() == null ? 0 : usage.getCompletionTokens());
 	}
 
 	private static String textOf(String model, Generation generation) {

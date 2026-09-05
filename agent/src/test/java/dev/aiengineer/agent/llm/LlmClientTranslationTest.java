@@ -86,9 +86,17 @@ class LlmClientTranslationTest {
 	private List<org.springframework.ai.chat.messages.Message> send(List<ContentItem> contents) {
 		when(openAi.call(any(Prompt.class)))
 			.thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("done")))));
-		client.respond("gpt-5-mini", contents, List.of(search));
+		client.generate(request("gpt-5-mini", contents, List.of(search)));
 		ArgumentCaptor<Prompt> prompt = ArgumentCaptor.forClass(Prompt.class);
 		verify(openAi).call(prompt.capture());
 		return prompt.getValue().getInstructions();
+	}
+
+	private static LlmRequest request(String model, List<ContentItem> contents, List<ToolDefinition> tools) {
+		LlmRequest request = new LlmRequest(model);
+		request.contents().addAll(contents);
+		request.tools().addAll(tools);
+		request.toolChoice(ToolChoice.AUTO);
+		return request;
 	}
 }

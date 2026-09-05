@@ -46,8 +46,8 @@ class ToolCallingLiveTest {
 	void answersWithoutToolWhenNoCalculationIsNeeded() {
 		LiveTests.assumeKeyPresentFor(router, MODEL);
 
-		LlmResponse response = service.respond(MODEL,
-			List.of(ContentItem.user("What is the capital of South Korea?")), List.of(CALCULATOR));
+		LlmResponse response = service.generate(request(MODEL,
+			List.of(ContentItem.user("What is the capital of South Korea?")), List.of(CALCULATOR)));
 
 		assertThat(response.hasToolCalls()).isFalse();
 		assertThat(response.text()).containsIgnoringCase("Seoul");
@@ -59,19 +59,27 @@ class ToolCallingLiveTest {
 		Conversation conversation = new Conversation();
 		conversation.addUser("What is 1234 x 5678?");
 
-		LlmResponse first = service.respond(MODEL, conversation.messages(), List.of(CALCULATOR));
+		LlmResponse first = service.generate(request(MODEL, conversation.messages(), List.of(CALCULATOR)));
 
 		assertThat(first.toolCalls()).singleElement().satisfies(call -> {
 			assertThat(call.id()).as("every tool call carries an id to tie its result to it").isNotBlank();
 			assertThat(call.name()).isEqualTo("calculator");
 			assertThat(call.arguments()).contains("multiply").contains("1234").contains("5678");
 		});
-		first.toContents().forEach(conversation::add);
+		first.content().forEach(conversation::add);
 		conversation.add(ToolResult.success(first.toolCalls().getFirst(), "7006652"));
 
-		LlmResponse second = service.respond(MODEL, conversation.messages(), List.of(CALCULATOR));
+		LlmResponse second = service.generate(request(MODEL, conversation.messages(), List.of(CALCULATOR)));
 
 		assertThat(second.hasToolCalls()).isFalse();
 		assertThat(second.text().replaceAll("[,.\\s]", "")).contains("7006652");
+	}
+
+	private static LlmRequest request(String model, List<ContentItem> contents, List<ToolDefinition> tools) {
+		LlmRequest request = new LlmRequest(model);
+		request.contents().addAll(contents);
+		request.tools().addAll(tools);
+		request.toolChoice(ToolChoice.AUTO);
+		return request;
 	}
 }

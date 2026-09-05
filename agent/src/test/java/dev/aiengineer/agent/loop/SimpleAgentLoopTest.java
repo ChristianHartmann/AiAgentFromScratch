@@ -3,8 +3,6 @@ package dev.aiengineer.agent.loop;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -13,13 +11,16 @@ import static org.mockito.Mockito.when;
 
 import dev.aiengineer.agent.llm.ContentItem;
 import dev.aiengineer.agent.llm.LlmClient;
+import dev.aiengineer.agent.llm.LlmRequest;
 import dev.aiengineer.agent.llm.LlmResponse;
 import dev.aiengineer.agent.llm.Message;
 import dev.aiengineer.agent.llm.Role;
 import dev.aiengineer.agent.llm.ToolCall;
 import dev.aiengineer.agent.llm.ToolResult;
+import dev.aiengineer.agent.llm.Usage;
 import dev.aiengineer.agent.tool.CalculatorTools;
 import dev.aiengineer.agent.tool.Toolbox;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -40,24 +41,25 @@ class SimpleAgentLoopTest {
 
 	@Test
 	void returnsTheAnswerWhenNoToolIsNeeded() {
-		when(llm.respond(eq(MODEL), anyList(), anyList())).thenReturn(text("Seoul"));
+		when(llm.generate(any(LlmRequest.class))).thenReturn(text("Seoul"));
 
 		assertThat(loop().run(MODEL, "system", "Capital of South Korea?", toolbox)).isEqualTo("Seoul");
 	}
 
 	@Test
 	void offersTheToolsOfTheToolbox() {
-		when(llm.respond(eq(MODEL), anyList(), anyList())).thenReturn(text("Seoul"));
+		when(llm.generate(any(LlmRequest.class))).thenReturn(text("Seoul"));
 
 		loop().run(MODEL, "system", "Capital?", toolbox);
 
-		verify(llm).respond(eq(MODEL), anyList(), eq(toolbox.definitions()));
+		assertThat(requestOfCall(1).model()).isEqualTo(MODEL);
+		assertThat(requestOfCall(1).tools()).isEqualTo(toolbox.definitions());
 	}
 
 	@Test
 	void runsTheToolAndSendsTheResultBack() {
-		when(llm.respond(eq(MODEL), anyList(), anyList()))
-			.thenReturn(new LlmResponse("", List.of(multiply)))
+		when(llm.generate(any(LlmRequest.class)))
+			.thenReturn(toolCalls(multiply))
 			.thenReturn(text("1234 x 5678 = 7006652"));
 
 		String answer = loop().run(MODEL, "system", "What is 1234 x 5678?", toolbox);
@@ -73,8 +75,8 @@ class SimpleAgentLoopTest {
 
 	@Test
 	void runsEveryToolCallOfOneAnswerInOrder() {
-		when(llm.respond(eq(MODEL), anyList(), anyList()))
-			.thenReturn(new LlmResponse("", List.of(multiply, add)))
+		when(llm.generate(any(LlmRequest.class)))
+			.thenReturn(toolCalls(multiply, add))
 			.thenReturn(text("done"));
 
 		loop().run(MODEL, "system", "Two calculations", toolbox);
@@ -86,8 +88,8 @@ class SimpleAgentLoopTest {
 
 	@Test
 	void everyCallSeesTheHistoryAsItWasAtThatMoment() {
-		when(llm.respond(eq(MODEL), anyList(), anyList()))
-			.thenReturn(new LlmResponse("", List.of(multiply)))
+		when(llm.generate(any(LlmRequest.class)))
+			.thenReturn(toolCalls(multiply))
 			.thenReturn(text("done"));
 
 		loop().run(MODEL, "system", "What is 1234 x 5678?", toolbox);
@@ -97,12 +99,12 @@ class SimpleAgentLoopTest {
 
 	@Test
 	void givesUpAfterTheMaximumNumberOfTurns() {
-		when(llm.respond(eq(MODEL), anyList(), anyList())).thenReturn(new LlmResponse("", List.of(multiply)));
+		when(llm.generate(any(LlmRequest.class))).thenReturn(toolCalls(multiply));
 
 		assertThatThrownBy(() -> new SimpleAgentLoop(llm, 3).run(MODEL, "system", "Loop forever", toolbox))
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("3");
-		verify(llm, times(3)).respond(any(), anyList(), anyList());
+		verify(llm, times(3)).generate(any(LlmRequest.class));
 	}
 
 	private SimpleAgentLoop loop() {
@@ -110,13 +112,23 @@ class SimpleAgentLoopTest {
 	}
 
 	private static LlmResponse text(String text) {
-		return new LlmResponse(text, List.of());
+		return new LlmResponse(List.of(ContentItem.assistant(text)), Usage.NONE);
 	}
 
-	@SuppressWarnings("unchecked")
+	private static LlmResponse toolCalls(ToolCall... calls) {
+		List<ContentItem> content = new ArrayList<>();
+		content.add(new Message(Role.ASSISTANT, ""));
+		content.addAll(List.of(calls));
+		return new LlmResponse(content, Usage.NONE);
+	}
+
 	private List<ContentItem> historyOfCall(int number) {
-		ArgumentCaptor<List<ContentItem>> history = ArgumentCaptor.forClass(List.class);
-		verify(llm, atLeast(number)).respond(eq(MODEL), history.capture(), anyList());
-		return history.getAllValues().get(number - 1);
+		return requestOfCall(number).contents();
+	}
+
+	private LlmRequest requestOfCall(int number) {
+		ArgumentCaptor<LlmRequest> request = ArgumentCaptor.forClass(LlmRequest.class);
+		verify(llm, atLeast(number)).generate(request.capture());
+		return request.getAllValues().get(number - 1);
 	}
 }

@@ -17,6 +17,8 @@ import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
+import org.springframework.ai.chat.metadata.DefaultUsage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -43,7 +45,7 @@ class LlmClientToolsTest {
 	void sendsToolDefinitionsWithThePrompt() {
 		answerWithText("ok");
 
-		service.respond("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search));
+		service.generate(request("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search)));
 
 		List<ToolCallback> callbacks = ((ToolCallingChatOptions) capturedPrompt().getOptions()).getToolCallbacks();
 		assertThat(callbacks).singleElement().satisfies(callback -> {
@@ -57,7 +59,7 @@ class LlmClientToolsTest {
 	void neverLetsSpringAiExecuteATool() {
 		answerWithText("ok");
 
-		service.respond("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search));
+		service.generate(request("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search)));
 
 		ToolCallback callback = ((ToolCallingChatOptions) capturedPrompt().getOptions()).getToolCallbacks().getFirst();
 		assertThatThrownBy(() -> callback.call("{}")).isInstanceOf(UnsupportedOperationException.class);
@@ -70,7 +72,7 @@ class LlmClientToolsTest {
 			.toolCalls(List.of(new AssistantMessage.ToolCall("call_1", "function", "searchWeb", "{\"query\":\"Kipchoge\"}")))
 			.build()));
 
-		LlmResponse response = service.respond("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search));
+		LlmResponse response = service.generate(request("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search)));
 
 		assertThat(response.hasToolCalls()).isTrue();
 		assertThat(response.toolCalls()).containsExactly(call);
@@ -86,7 +88,7 @@ class LlmClientToolsTest {
 				new AssistantMessage.ToolCall(null, "function", "searchWeb", "{\"query\":\"Kiptum\"}")))
 			.build()));
 
-		LlmResponse response = service.respond("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search));
+		LlmResponse response = service.generate(request("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search)));
 
 		assertThat(response.toolCalls()).extracting(ToolCall::id)
 			.allSatisfy(id -> assertThat(id).startsWith("call_").hasSizeGreaterThan("call_".length()))
@@ -105,10 +107,10 @@ class LlmClientToolsTest {
 		Conversation conversation = new Conversation();
 		conversation.addUser("Search");
 
-		LlmResponse first = service.respond("gpt-5-mini", conversation.messages(), List.of(search));
-		first.toContents().forEach(conversation::add);
+		LlmResponse first = service.generate(request("gpt-5-mini", conversation.messages(), List.of(search)));
+		first.content().forEach(conversation::add);
 		conversation.add(ToolResult.success(first.toolCalls().getFirst(), "result"));
-		service.respond("gpt-5-mini", conversation.messages(), List.of(search));
+		service.generate(request("gpt-5-mini", conversation.messages(), List.of(search)));
 
 		ArgumentCaptor<Prompt> prompts = ArgumentCaptor.forClass(Prompt.class);
 		verify(openAi, times(2)).call(prompts.capture());
@@ -120,7 +122,7 @@ class LlmClientToolsTest {
 	void returnsTextWhenTheModelAnswersDirectly() {
 		answerWithText("Seoul");
 
-		LlmResponse response = service.respond("gpt-5-mini", List.of(ContentItem.user("Capital?")), List.of(search));
+		LlmResponse response = service.generate(request("gpt-5-mini", List.of(ContentItem.user("Capital?")), List.of(search)));
 
 		assertThat(response.hasToolCalls()).isFalse();
 		assertThat(response.text()).isEqualTo("Seoul");
@@ -130,10 +132,10 @@ class LlmClientToolsTest {
 	void passesToolCallsAndToolResultsOfTheHistoryToSpringAi() {
 		answerWithText("done");
 
-		service.respond("gpt-5-mini", List.of(
+		service.generate(request("gpt-5-mini", List.of(
 			ContentItem.user("Search"),
 			call,
-			ToolResult.success(call, "Kipchoge ran 2:01:09")), List.of(search));
+			ToolResult.success(call, "Kipchoge ran 2:01:09")), List.of(search)));
 
 		List<Message> instructions = capturedPrompt().getInstructions();
 		assertThat(instructions).extracting(Message::getMessageType)
@@ -153,11 +155,11 @@ class LlmClientToolsTest {
 		answerWithText("done");
 		ToolCall second = new ToolCall("call_2", "searchWeb", "{\"query\":\"Kiptum\"}");
 
-		service.respond("gpt-5-mini", List.of(
+		service.generate(request("gpt-5-mini", List.of(
 			ContentItem.user("Search twice"),
 			call, second,
 			ToolResult.success(call, "first"),
-			ToolResult.success(second, "second")), List.of(search));
+			ToolResult.success(second, "second")), List.of(search)));
 
 		List<Message> instructions = capturedPrompt().getInstructions();
 		assertThat(instructions).extracting(Message::getMessageType)
@@ -191,10 +193,10 @@ class LlmClientToolsTest {
 	void keepsPlainTextToolResultsForOtherProviders() {
 		answerWithText("done");
 
-		service.respond("gpt-5-mini", List.of(
+		service.generate(request("gpt-5-mini", List.of(
 			ContentItem.user("Search"),
 			call,
-			ToolResult.success(call, "Suggestions: nobel prize 2025")), List.of(search));
+			ToolResult.success(call, "Suggestions: nobel prize 2025")), List.of(search)));
 
 		assertThat(((ToolResponseMessage) capturedPrompt().getInstructions().get(2)).getResponses().getFirst()
 			.responseData()).isEqualTo("Suggestions: nobel prize 2025");
@@ -204,7 +206,7 @@ class LlmClientToolsTest {
 	void reportsARefusalOnlyWhenThereIsNeitherTextNorToolCalls() {
 		answerWithText("");
 
-		assertThatThrownBy(() -> service.respond("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search)))
+		assertThatThrownBy(() -> service.generate(request("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search))))
 			.isInstanceOf(LlmRefusalException.class);
 	}
 
@@ -214,16 +216,55 @@ class LlmClientToolsTest {
 	private String toolResultSentToGoogle(String content) {
 		when(google.call(any(Prompt.class))).thenReturn(response(new AssistantMessage("done")));
 
-		service.respond("google/gemini-3.6-flash", List.of(
+		service.generate(request("google/gemini-3.6-flash", List.of(
 			ContentItem.user("Search"),
 			call,
-			ToolResult.success(call, content)), List.of(search));
+			ToolResult.success(call, content)), List.of(search)));
 
 		ArgumentCaptor<Prompt> prompts = ArgumentCaptor.forClass(Prompt.class);
 		verify(google, atLeastOnce()).call(prompts.capture());
 		return ((ToolResponseMessage) prompts.getAllValues().getLast().getInstructions().get(2)).getResponses()
 			.getFirst()
 			.responseData();
+	}
+
+	@Test
+	void sendsEveryInstructionAsItsOwnSystemMessage() {
+		answerWithText("ok");
+		LlmRequest request = new LlmRequest("gpt-5-mini");
+		request.instructions().addAll(List.of("You are helpful.", "Answer briefly."));
+		request.contents().add(ContentItem.user("Hi"));
+
+		service.generate(request);
+
+		assertThat(capturedPrompt().getInstructions()).extracting(Message::getMessageType)
+			.containsExactly(MessageType.SYSTEM, MessageType.SYSTEM, MessageType.USER);
+	}
+
+	@Test
+	void answersWithAnAssistantMessageFollowedByTheToolCalls() {
+		when(openAi.call(any(Prompt.class))).thenReturn(response(AssistantMessage.builder()
+			.content("")
+			.toolCalls(List.of(new AssistantMessage.ToolCall("call_1", "function", "searchWeb", "{}")))
+			.build()));
+
+		LlmResponse response = service.generate(request("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of(search)));
+
+		assertThat(response.content()).hasSize(2);
+		assertThat(response.content().getFirst()).isInstanceOfSatisfying(dev.aiengineer.agent.llm.Message.class,
+				message -> assertThat(message.role()).isEqualTo(Role.ASSISTANT));
+		assertThat(response.content().get(1)).isInstanceOf(ToolCall.class);
+	}
+
+	@Test
+	void reportsTheUsageOfTheCall() {
+		when(openAi.call(any(Prompt.class))).thenReturn(new ChatResponse(
+				List.of(new Generation(new AssistantMessage("ok"))),
+				ChatResponseMetadata.builder().usage(new DefaultUsage(12, 3)).build()));
+
+		LlmResponse response = service.generate(request("gpt-5-mini", List.of(ContentItem.user("Hi")), List.of()));
+
+		assertThat(response.usage()).isEqualTo(new Usage(12, 3));
 	}
 
 	private void answerWithText(String text) {
@@ -238,5 +279,13 @@ class LlmClientToolsTest {
 		ArgumentCaptor<Prompt> prompt = ArgumentCaptor.forClass(Prompt.class);
 		verify(openAi).call(prompt.capture());
 		return prompt.getValue();
+	}
+
+	private static LlmRequest request(String model, List<ContentItem> contents, List<ToolDefinition> tools) {
+		LlmRequest request = new LlmRequest(model);
+		request.contents().addAll(contents);
+		request.tools().addAll(tools);
+		request.toolChoice(ToolChoice.AUTO);
+		return request;
 	}
 }
