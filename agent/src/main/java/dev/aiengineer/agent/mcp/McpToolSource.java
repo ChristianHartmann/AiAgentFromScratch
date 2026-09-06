@@ -57,7 +57,10 @@ public final class McpToolSource implements AutoCloseable {
 
 		@Override
 		public Object execute(ExecutionContext context, String arguments) {
-			return toText(source.client.callTool(new McpSchema.CallToolRequest(definition.name(), parse(arguments))));
+			McpSchema.CallToolRequest request = McpSchema.CallToolRequest.builder(definition.name())
+				.arguments(parse(arguments))
+				.build();
+			return toText(source.client.callTool(request));
 		}
 	}
 
