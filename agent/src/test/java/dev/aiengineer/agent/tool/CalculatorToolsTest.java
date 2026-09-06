@@ -3,7 +3,7 @@ package dev.aiengineer.agent.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import dev.aiengineer.agent.llm.ToolCall;
+import dev.aiengineer.agent.context.ExecutionContext;
 import dev.aiengineer.agent.tool.CalculatorTools.Operator;
 import org.junit.jupiter.api.Test;
 
@@ -27,12 +27,12 @@ class CalculatorToolsTest {
 	}
 
 	@Test
-	void worksAsToolInsideTheToolbox() {
-		Toolbox toolbox = Toolbox.of(calculator);
+	void worksAsFunctionTool() throws Exception {
+		Tool tool = FunctionTool.allOf(calculator).getFirst();
 
-		String result = toolbox.execute(new ToolCall("1", "calculator",
-				"{\"operator\":\"multiply\",\"firstNumber\":1234,\"secondNumber\":5678}"));
+		Object result = tool.execute(new ExecutionContext(),
+				"{\"operator\":\"multiply\",\"firstNumber\":1234,\"secondNumber\":5678}");
 
-		assertThat(result).isEqualTo("7006652.0");
+		assertThat(result).isEqualTo(7006652.0);
 	}
 }

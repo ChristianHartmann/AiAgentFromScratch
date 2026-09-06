@@ -53,7 +53,7 @@ class McpToolSourceTest {
 	}
 
 	@Test
-	void turnsAnErrorResultIntoAnExceptionTheToolboxReportsAsText() {
+	void turnsAnErrorResultIntoAnException() {
 		McpSchema.CallToolResult result = new McpSchema.CallToolResult(
 				List.of(new McpSchema.TextContent("SearXNG is not reachable")), true, null, null);
 

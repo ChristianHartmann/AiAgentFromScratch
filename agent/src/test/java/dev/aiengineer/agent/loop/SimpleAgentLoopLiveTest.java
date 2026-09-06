@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import dev.aiengineer.agent.llm.LiveTests;
 import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.ModelRouter;
-import dev.aiengineer.agent.tool.Toolbox;
+import dev.aiengineer.agent.tool.FunctionTool;
 import dev.aiengineer.agent.tool.WebSearchTools;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -44,7 +44,7 @@ class SimpleAgentLoopLiveTest {
 
 		String answer = new SimpleAgentLoop(llm).run(MODEL,
 				"You are a helpful assistant. Always search the web before answering.",
-				"Who won the 2025 Nobel Prize in Physics?", Toolbox.of(searchSpy));
+				"Who won the 2025 Nobel Prize in Physics?", FunctionTool.allOf(searchSpy));
 
 		verify(searchSpy, atLeastOnce()).searchWeb(anyString(), any(), any(), any());
 		assertThat(answer).containsAnyOf("Clarke", "Devoret", "Martinis");

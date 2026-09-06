@@ -1,5 +1,6 @@
 package dev.aiengineer.agent.tool;
 
+import dev.aiengineer.agent.context.ExecutionContext;
 import dev.aiengineer.agent.llm.ToolDefinition;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -42,6 +43,9 @@ public final class ToolSchemaGenerator {
 		ObjectNode properties = schema.putObject("properties");
 		ArrayNode required = schema.putArray("required");
 		for (Parameter parameter : method.getParameters()) {
+			if (ExecutionContext.class.equals(parameter.getType())) {
+				continue;
+			}
 			if (!parameter.isNamePresent()) {
 				throw new IllegalStateException("Parameter names of " + method.getName()
 						+ " are missing from the bytecode, compile with -parameters");

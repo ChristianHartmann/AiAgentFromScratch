@@ -1,7 +1,8 @@
 package dev.aiengineer.agent.mcp;
 
+import dev.aiengineer.agent.context.ExecutionContext;
 import dev.aiengineer.agent.llm.ToolDefinition;
-import dev.aiengineer.agent.tool.Toolbox;
+import dev.aiengineer.agent.tool.Tool;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
@@ -44,19 +45,20 @@ public final class McpToolSource implements AutoCloseable {
 		return new McpToolSource(client);
 	}
 
-	public List<ToolDefinition> tools() {
-		return mcpTools().stream().map(McpToolSource::toDefinition).toList();
+	/**
+	 * The tools of the server, each executed by calling the server over the open connection.
+	 * The book starts the server again for every call; we keep one connection per source.
+	 */
+	public List<Tool> tools() {
+		return mcpTools().stream().<Tool>map(tool -> new McpTool(toDefinition(tool), this)).toList();
 	}
 
-	/**
-	 * Adds every tool of the server to the toolbox, executed by calling the server.
-	 */
-	public Toolbox registerInto(Toolbox toolbox) {
-		for (McpSchema.Tool tool : mcpTools()) {
-			toolbox.add(toDefinition(tool), arguments -> toText(
-					client.callTool(new McpSchema.CallToolRequest(tool.name(), parse(arguments)))));
+	private record McpTool(ToolDefinition definition, McpToolSource source) implements Tool {
+
+		@Override
+		public Object execute(ExecutionContext context, String arguments) {
+			return toText(source.client.callTool(new McpSchema.CallToolRequest(definition.name(), parse(arguments))));
 		}
-		return toolbox;
 	}
 
 	@Override

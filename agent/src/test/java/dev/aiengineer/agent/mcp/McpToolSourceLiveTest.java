@@ -2,13 +2,12 @@ package dev.aiengineer.agent.mcp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.aiengineer.agent.context.ExecutionContext;
 import dev.aiengineer.agent.llm.LiveTests;
 import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.ModelRouter;
-import dev.aiengineer.agent.llm.ToolCall;
-import dev.aiengineer.agent.llm.ToolDefinition;
 import dev.aiengineer.agent.loop.SimpleAgentLoop;
-import dev.aiengineer.agent.tool.Toolbox;
+import dev.aiengineer.agent.tool.Tool;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Tag;
@@ -33,16 +32,18 @@ class McpToolSourceLiveTest {
 
 	@Test
 	@Tag("external")
-	void listsAndCallsTheToolsOfTheSearxngServer() {
+	void listsAndCallsTheToolsOfTheSearxngServer() throws Exception {
 		String searxngUrl = LiveTests.assumeSearxngRunning();
 
 		try (McpToolSource searxng = searxng(searxngUrl)) {
-			assertThat(searxng.tools()).extracting(ToolDefinition::name).contains("searxng_web_search");
+			List<Tool> tools = searxng.tools();
+			assertThat(tools).extracting(Tool::name).contains("searxng_web_search");
 
-			String result = searxng.registerInto(new Toolbox()).execute(
-					new ToolCall("1", "searxng_web_search", "{\"query\":\"Eliud Kipchoge marathon world record\"}"));
+			Tool search = tools.stream().filter(tool -> tool.name().equals("searxng_web_search"))
+				.findFirst().orElseThrow();
+			Object result = search.execute(new ExecutionContext(), "{\"query\":\"Eliud Kipchoge marathon world record\"}");
 
-			assertThat(result).doesNotStartWith("Error").containsIgnoringCase("Kipchoge");
+			assertThat(result).asString().containsIgnoringCase("Kipchoge");
 		}
 	}
 
@@ -55,7 +56,7 @@ class McpToolSourceLiveTest {
 		try (McpToolSource searxng = searxng(searxngUrl)) {
 			String answer = new SimpleAgentLoop(llm).run(MODEL,
 					"You are a helpful assistant. Always search the web before answering.",
-					"Who won the 2025 Nobel Prize in Physics?", searxng.registerInto(new Toolbox()));
+					"Who won the 2025 Nobel Prize in Physics?", searxng.tools());
 
 			assertThat(answer).containsAnyOf("Clarke", "Devoret", "Martinis");
 		}

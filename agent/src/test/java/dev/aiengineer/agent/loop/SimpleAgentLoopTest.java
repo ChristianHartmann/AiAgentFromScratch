@@ -19,7 +19,8 @@ import dev.aiengineer.agent.llm.ToolCall;
 import dev.aiengineer.agent.llm.ToolResult;
 import dev.aiengineer.agent.llm.Usage;
 import dev.aiengineer.agent.tool.CalculatorTools;
-import dev.aiengineer.agent.tool.Toolbox;
+import dev.aiengineer.agent.tool.FunctionTool;
+import dev.aiengineer.agent.tool.Tool;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class SimpleAgentLoopTest {
 
 	private final LlmClient llm = mock(LlmClient.class);
 
-	private final Toolbox toolbox = Toolbox.of(new CalculatorTools());
+	private final List<Tool> tools = FunctionTool.allOf(new CalculatorTools());
 
 	private final ToolCall multiply = new ToolCall("call_1", "calculator",
 			"{\"operator\":\"MULTIPLY\",\"firstNumber\":1234,\"secondNumber\":5678}");
@@ -43,17 +44,17 @@ class SimpleAgentLoopTest {
 	void returnsTheAnswerWhenNoToolIsNeeded() {
 		when(llm.generate(any(LlmRequest.class))).thenReturn(text("Seoul"));
 
-		assertThat(loop().run(MODEL, "system", "Capital of South Korea?", toolbox)).isEqualTo("Seoul");
+		assertThat(loop().run(MODEL, "system", "Capital of South Korea?", tools)).isEqualTo("Seoul");
 	}
 
 	@Test
-	void offersTheToolsOfTheToolbox() {
+	void offersTheGivenTools() {
 		when(llm.generate(any(LlmRequest.class))).thenReturn(text("Seoul"));
 
-		loop().run(MODEL, "system", "Capital?", toolbox);
+		loop().run(MODEL, "system", "Capital?", tools);
 
 		assertThat(requestOfCall(1).model()).isEqualTo(MODEL);
-		assertThat(requestOfCall(1).tools()).isEqualTo(toolbox.definitions());
+		assertThat(requestOfCall(1).tools()).isEqualTo(tools.stream().map(Tool::definition).toList());
 	}
 
 	@Test
@@ -62,7 +63,7 @@ class SimpleAgentLoopTest {
 			.thenReturn(toolCalls(multiply))
 			.thenReturn(text("1234 x 5678 = 7006652"));
 
-		String answer = loop().run(MODEL, "system", "What is 1234 x 5678?", toolbox);
+		String answer = loop().run(MODEL, "system", "What is 1234 x 5678?", tools);
 
 		assertThat(answer).isEqualTo("1234 x 5678 = 7006652");
 		assertThat(historyOfCall(2)).containsExactly(
@@ -70,7 +71,7 @@ class SimpleAgentLoopTest {
 			ContentItem.user("What is 1234 x 5678?"),
 			new Message(Role.ASSISTANT, ""),
 			multiply,
-			ToolResult.success(multiply, "7006652.0"));
+			ToolResult.success(multiply, 7006652.0));
 	}
 
 	@Test
@@ -79,11 +80,11 @@ class SimpleAgentLoopTest {
 			.thenReturn(toolCalls(multiply, add))
 			.thenReturn(text("done"));
 
-		loop().run(MODEL, "system", "Two calculations", toolbox);
+		loop().run(MODEL, "system", "Two calculations", tools);
 
 		assertThat(historyOfCall(2)).endsWith(
-			ToolResult.success(multiply, "7006652.0"),
-			ToolResult.success(add, "3.0"));
+			ToolResult.success(multiply, 7006652.0),
+			ToolResult.success(add, 3.0));
 	}
 
 	@Test
@@ -92,7 +93,7 @@ class SimpleAgentLoopTest {
 			.thenReturn(toolCalls(multiply))
 			.thenReturn(text("done"));
 
-		loop().run(MODEL, "system", "What is 1234 x 5678?", toolbox);
+		loop().run(MODEL, "system", "What is 1234 x 5678?", tools);
 
 		assertThat(historyOfCall(1)).hasSize(2);
 	}
@@ -101,7 +102,7 @@ class SimpleAgentLoopTest {
 	void givesUpAfterTheMaximumNumberOfTurns() {
 		when(llm.generate(any(LlmRequest.class))).thenReturn(toolCalls(multiply));
 
-		assertThatThrownBy(() -> new SimpleAgentLoop(llm, 3).run(MODEL, "system", "Loop forever", toolbox))
+		assertThatThrownBy(() -> new SimpleAgentLoop(llm, 3).run(MODEL, "system", "Loop forever", tools))
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("3");
 		verify(llm, times(3)).generate(any(LlmRequest.class));

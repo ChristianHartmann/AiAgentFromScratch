@@ -3,6 +3,7 @@ package dev.aiengineer.agent.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.aiengineer.agent.context.ExecutionContext;
 import dev.aiengineer.agent.llm.ToolDefinition;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
@@ -43,6 +44,11 @@ class ToolSchemaGeneratorTest {
 
 		@ToolFunction("Optional primitive.")
 		public String optionalPrimitive(@ToolParam(value = "count", required = false) int count) {
+			return "";
+		}
+
+		@ToolFunction("Uses the context.")
+		public String withContext(ExecutionContext context, String query) {
 			return "";
 		}
 	}
@@ -114,6 +120,14 @@ class ToolSchemaGeneratorTest {
 		assertThatThrownBy(() -> ToolSchemaGenerator.definitionOf(method("optionalPrimitive")))
 			.isInstanceOf(IllegalArgumentException.class)
 			.hasMessageContaining("count");
+	}
+
+	@Test
+	void leavesExecutionContextParametersOut() {
+		JsonNode schema = schema("withContext");
+
+		assertThat(schema.path("properties").has("context")).isFalse();
+		assertThat(schema.path("required").values()).extracting(JsonNode::asString).containsExactly("query");
 	}
 
 	private static Method method(String name) {
