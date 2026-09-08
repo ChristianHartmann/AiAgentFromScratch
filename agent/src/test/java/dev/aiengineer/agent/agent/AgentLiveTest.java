@@ -1,4 +1,4 @@
-package dev.aiengineer.agent.loop;
+package dev.aiengineer.agent.agent;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,7 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 	"spring.ai.anthropic.api-key=${ANTHROPIC_API_KEY:not-set}",
 	"spring.ai.google.genai.api-key=${GEMINI_API_KEY:not-set}"
 })
-class SimpleAgentLoopLiveTest {
+class AgentLiveTest {
 
 	private static final String MODEL = "google/gemini-3.6-flash";
 
@@ -42,11 +42,15 @@ class SimpleAgentLoopLiveTest {
 		LiveTests.assumeSearxngRunning();
 		WebSearchTools searchSpy = spy(webSearch);
 
-		String answer = new SimpleAgentLoop(llm).run(MODEL,
-				"You are a helpful assistant. Always search the web before answering.",
-				"Who won the 2025 Nobel Prize in Physics?", FunctionTool.allOf(searchSpy));
+		AgentResult<String> result = Agent.builder(llm)
+			.model(MODEL)
+			.instructions("You are a helpful assistant. Always search the web before answering.")
+			.tools(FunctionTool.allOf(searchSpy))
+			.build()
+			.run("Who won the 2025 Nobel Prize in Physics?");
 
 		verify(searchSpy, atLeastOnce()).searchWeb(anyString(), any(), any(), any());
-		assertThat(answer).containsAnyOf("Clarke", "Devoret", "Martinis");
+		assertThat(result.status()).isEqualTo(AgentResult.Status.COMPLETE);
+		assertThat(result.output()).containsAnyOf("Clarke", "Devoret", "Martinis");
 	}
 }

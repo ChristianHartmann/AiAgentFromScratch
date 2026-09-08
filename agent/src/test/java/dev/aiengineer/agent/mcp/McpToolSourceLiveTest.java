@@ -2,11 +2,12 @@ package dev.aiengineer.agent.mcp;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.aiengineer.agent.agent.Agent;
+import dev.aiengineer.agent.agent.AgentResult;
 import dev.aiengineer.agent.context.ExecutionContext;
 import dev.aiengineer.agent.llm.LiveTests;
 import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.ModelRouter;
-import dev.aiengineer.agent.loop.SimpleAgentLoop;
 import dev.aiengineer.agent.tool.Tool;
 import java.util.List;
 import java.util.Map;
@@ -49,16 +50,19 @@ class McpToolSourceLiveTest {
 
 	@Test
 	@Tag("llm")
-	void letsTheLoopSearchThroughMcp() {
+	void letsTheAgentSearchThroughMcp() {
 		LiveTests.assumeKeyPresentFor(router, MODEL);
 		String searxngUrl = LiveTests.assumeSearxngRunning();
 
 		try (McpToolSource searxng = searxng(searxngUrl)) {
-			String answer = new SimpleAgentLoop(llm).run(MODEL,
-					"You are a helpful assistant. Always search the web before answering.",
-					"Who won the 2025 Nobel Prize in Physics?", searxng.tools());
+			AgentResult<String> result = Agent.builder(llm)
+				.model(MODEL)
+				.instructions("You are a helpful assistant. Always search the web before answering.")
+				.tools(searxng.tools())
+				.build()
+				.run("Who won the 2025 Nobel Prize in Physics?");
 
-			assertThat(answer).containsAnyOf("Clarke", "Devoret", "Martinis");
+			assertThat(result.output()).containsAnyOf("Clarke", "Devoret", "Martinis");
 		}
 	}
 
