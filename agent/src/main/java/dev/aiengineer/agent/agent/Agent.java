@@ -39,12 +39,19 @@ public final class Agent<T> {
 
 	private final int maxSteps;
 
+	private final Class<T> outputType;
+
 	private Agent(Builder<T> builder) {
 		this.llm = builder.llm;
 		this.model = Objects.requireNonNull(builder.model, "model");
 		this.name = builder.name;
 		this.instructions = builder.instructions;
-		this.tools = byName(builder.tools);
+		this.outputType = builder.outputType;
+		List<Tool> allTools = new ArrayList<>(builder.tools);
+		if (outputType != null) {
+			allTools.add(new FinalAnswerTool<>(outputType));
+		}
+		this.tools = byName(allTools);
 		this.maxSteps = builder.maxSteps;
 	}
 
@@ -106,7 +113,7 @@ public final class Agent<T> {
 		}
 		context.events().forEach(event -> request.contents().addAll(event.content()));
 		tools.values().forEach(tool -> request.tools().add(tool.definition()));
-		request.toolChoice(tools.isEmpty() ? null : ToolChoice.AUTO);
+		request.toolChoice(outputType != null ? ToolChoice.REQUIRED : tools.isEmpty() ? null : ToolChoice.AUTO);
 		return request;
 	}
 
@@ -136,10 +143,20 @@ public final class Agent<T> {
 	}
 
 	private boolean isFinal(Event event) {
+		if (outputType != null) {
+			return event.content().stream().anyMatch(this::isSuccessfulFinalAnswer);
+		}
 		return event.content().stream().noneMatch(item -> item instanceof ToolCall || item instanceof ToolResult);
 	}
 
 	private Object extractResult(Event event) {
+		if (outputType != null) {
+			return event.content().stream()
+				.filter(this::isSuccessfulFinalAnswer)
+				.map(item -> ((ToolResult) item).content())
+				.findFirst()
+				.orElseThrow();
+		}
 		return event.content().stream()
 			.filter(Message.class::isInstance)
 			.map(Message.class::cast)
@@ -147,6 +164,11 @@ public final class Agent<T> {
 			.map(Message::content)
 			.findFirst()
 			.orElse("");
+	}
+
+	private boolean isSuccessfulFinalAnswer(ContentItem item) {
+		return item instanceof ToolResult result && result.name().equals(FinalAnswerTool.NAME)
+				&& result.status() == ToolResult.Status.SUCCESS;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -178,8 +200,27 @@ public final class Agent<T> {
 
 		private int maxSteps = DEFAULT_MAX_STEPS;
 
+		private Class<T> outputType;
+
 		private Builder(LlmClient llm) {
 			this.llm = Objects.requireNonNull(llm, "llm");
+		}
+
+		private Builder(Builder<?> other, Class<T> outputType) {
+			this.llm = other.llm;
+			this.model = other.model;
+			this.name = other.name;
+			this.instructions = other.instructions;
+			this.tools = other.tools;
+			this.maxSteps = other.maxSteps;
+			this.outputType = outputType;
+		}
+
+		/**
+		 * The run ends with a record of this type instead of text, through the final_answer tool.
+		 */
+		public <R> Builder<R> outputType(Class<R> outputType) {
+			return new Builder<>(this, Objects.requireNonNull(outputType, "outputType"));
 		}
 
 		public Builder<T> model(String model) {

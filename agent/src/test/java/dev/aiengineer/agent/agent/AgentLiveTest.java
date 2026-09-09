@@ -12,6 +12,7 @@ import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.ModelRouter;
 import dev.aiengineer.agent.tool.FunctionTool;
 import dev.aiengineer.agent.tool.WebSearchTools;
+import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 class AgentLiveTest {
 
 	private static final String MODEL = "google/gemini-3.6-flash";
+
+	public enum Mood {
+		POSITIVE, NEGATIVE, NEUTRAL
+	}
+
+	public record Sentiment(Mood sentiment, double confidence, List<String> keyPhrases) {
+	}
 
 	@Autowired
 	private LlmClient llm;
@@ -52,5 +60,21 @@ class AgentLiveTest {
 		verify(searchSpy, atLeastOnce()).searchWeb(anyString(), any(), any(), any());
 		assertThat(result.status()).isEqualTo(AgentResult.Status.COMPLETE);
 		assertThat(result.output()).containsAnyOf("Clarke", "Devoret", "Martinis");
+	}
+
+	@Test
+	void returnsATypedAnswerThroughFinalAnswer() {
+		LiveTests.assumeKeyPresentFor(router, MODEL);
+
+		AgentResult<Sentiment> result = Agent.builder(llm)
+			.model(MODEL)
+			.instructions("Analyze the sentiment of the text.")
+			.outputType(Sentiment.class)
+			.build()
+			.run("I absolutely love this product, it changed my mornings.");
+
+		assertThat(result.status()).isEqualTo(AgentResult.Status.COMPLETE);
+		assertThat(result.output().sentiment()).isEqualTo(Mood.POSITIVE);
+		assertThat(result.output().keyPhrases()).isNotEmpty();
 	}
 }
