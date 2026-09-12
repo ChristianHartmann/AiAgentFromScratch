@@ -196,12 +196,23 @@ class AgentTest {
 		when(llm.generate(any())).thenReturn(text("first")).thenReturn(text("second"));
 		Agent<String> agent = agent();
 		ExecutionContext context = agent.run("One").context();
-		context.finalResult(null);
 
 		AgentResult<String> result = agent.run("Two", context);
 
 		assertThat(result.output()).isEqualTo("second");
 		assertThat(result.context().events()).extracting(Event::author).containsExactly("user", "agent", "user", "agent");
+	}
+
+	@Test
+	void givesEveryRunItsOwnStepBudget() {
+		when(llm.generate(any())).thenReturn(calls(multiply)).thenReturn(calls(multiply)).thenReturn(text("done"));
+		Agent<String> agent = Agent.builder(llm).model(MODEL).tools(calculator()).maxSteps(2).build();
+		ExecutionContext context = agent.run("Loop").context();
+
+		AgentResult<String> result = agent.run("Now answer", context);
+
+		assertThat(result.status()).isEqualTo(AgentResult.Status.COMPLETE);
+		assertThat(result.output()).isEqualTo("done");
 	}
 
 	@Test

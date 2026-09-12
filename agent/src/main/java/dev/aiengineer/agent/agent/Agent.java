@@ -67,11 +67,18 @@ public final class Agent<T> {
 		return run(userInput, new ExecutionContext());
 	}
 
+	/**
+	 * Runs on an existing context, for example to continue a conversation. A new input asks
+	 * for a new answer, so the result of an earlier run is dropped, and every run gets the
+	 * full step budget. Without input, the run only goes on where the context stopped.
+	 */
 	public AgentResult<T> run(String userInput, ExecutionContext context) {
 		if (userInput != null) {
+			context.finalResult(null);
 			context.addEvent(Event.of(context.executionId(), "user", List.of(ContentItem.user(userInput))));
 		}
-		while (!context.hasFinalResult() && context.currentStep() < maxSteps) {
+		int stepLimit = context.currentStep() + maxSteps;
+		while (!context.hasFinalResult() && context.currentStep() < stepLimit) {
 			try {
 				step(context);
 			}
