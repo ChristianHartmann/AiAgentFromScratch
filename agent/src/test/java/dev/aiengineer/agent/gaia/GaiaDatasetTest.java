@@ -31,25 +31,44 @@ class GaiaDatasetTest {
 	void readsTasksFromTheRowsApiResponse() throws IOException {
 		List<GaiaProblem> tasks = GaiaDataset.parse(sampleResponse());
 
-		assertThat(tasks).hasSize(3);
+		assertThat(tasks).hasSize(4);
 		assertThat(tasks.getFirst()).isEqualTo(new GaiaProblem(
 			"11111111-1111-4111-8111-111111111111",
 			"How many matchboxes fit side by side on a shelf 80 cm wide if one box is 5 cm wide?",
-			1, "16", ""));
+			1, "16", "", "1. A calculator"));
 	}
 
 	@Test
 	void readsTheLevelAlthoughTheApiSendsItAsString() throws IOException {
 		List<GaiaProblem> tasks = GaiaDataset.parse(sampleResponse());
 
-		assertThat(tasks).extracting(GaiaProblem::level).containsExactly(1, 2, 1);
+		assertThat(tasks).extracting(GaiaProblem::level).containsExactly(1, 2, 1, 1);
 	}
 
 	@Test
 	void recognizesTasksWithAnAttachment() throws IOException {
 		List<GaiaProblem> tasks = GaiaDataset.parse(sampleResponse());
 
-		assertThat(tasks).extracting(GaiaProblem::hasAttachment).containsExactly(false, true, false);
+		assertThat(tasks).extracting(GaiaProblem::hasAttachment).containsExactly(false, true, false, false);
+	}
+
+	@Test
+	void readsTheToolsTheAnnotatorsUsed() throws IOException {
+		List<GaiaProblem> tasks = GaiaDataset.parse(sampleResponse());
+
+		assertThat(tasks.getFirst().annotatorTools()).isEqualTo("1. A calculator");
+		assertThat(tasks).extracting(GaiaProblem::needsWebSearch).containsExactly(false, false, false, true);
+	}
+
+	@Test
+	void loadsOnlyTasksThatNeedAWebSearch() throws IOException {
+		server.expect(requestTo(startsWith("https://datasets-server.huggingface.co/rows")))
+			.andExpect(queryParam("length", "100"))
+			.andRespond(withSuccess(sampleResponse(), MediaType.APPLICATION_JSON));
+
+		List<GaiaProblem> tasks = dataset("test-token").loadNeedingWebSearch(10);
+
+		assertThat(tasks).extracting(GaiaProblem::taskId).containsExactly("44444444-4444-4444-8444-444444444444");
 	}
 
 	@Test
@@ -65,7 +84,7 @@ class GaiaDatasetTest {
 
 		List<GaiaProblem> tasks = dataset("test-token").load(3);
 
-		assertThat(tasks).hasSize(3);
+		assertThat(tasks).hasSize(4);
 		server.verify();
 	}
 

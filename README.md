@@ -11,7 +11,7 @@ Spring AI dient nur als Schicht zum LLM-Anbieter, so wie LiteLLM im Buch. Die Ag
 | 1 | What is an AI agent? | ✅ Erledigt | Einführung ohne Code |
 | 2 | The brain of AI agents: LLMs | ✅ Erledigt | Tag `chapter-02`; der Lauf des GAIA-Experiments steht noch aus |
 | 3 | Enabling actions: Tool use | ✅ Erledigt | Tag `chapter-03`; Websuche über SearXNG statt Tavily |
-| 4 | Implementing a basic ReAct agent | ⚠️ In Arbeit | |
+| 4 | Implementing a basic ReAct agent | ✅ Erledigt | Tag `chapter-04`; der Lauf des GAIA-Agenten steht noch aus |
 | 5 | Building knowledge bases with RAG | ❌ Offen | |
 | 6 | Adding memory to your agent | ❌ Offen | |
 | 7 | Planning and reflection for complex tasks | ❌ Offen | |

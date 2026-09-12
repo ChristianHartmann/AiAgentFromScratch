@@ -133,6 +133,25 @@
                 }
             },
             "truncated_cells": []
+        },
+        {
+            "row_idx": 3,
+            "row": {
+                "task_id": "44444444-4444-4444-8444-444444444444",
+                "Question": "Which river flows through the fictional town of Example Falls according to its official website?",
+                "Level": "1",
+                "Final answer": "Sample River",
+                "file_name": "",
+                "file_path": "",
+                "Annotator Metadata": {
+                    "Steps": "1. Searched the web for Example Falls.\n2. Opened the official website.",
+                    "Number of steps": "2",
+                    "How long did this take?": "2 minutes",
+                    "Tools": "1. A web browser.\n2. A search engine.",
+                    "Number of tools": "2"
+                }
+            },
+            "truncated_cells": []
         }
     ],
     "num_rows_total": 53,

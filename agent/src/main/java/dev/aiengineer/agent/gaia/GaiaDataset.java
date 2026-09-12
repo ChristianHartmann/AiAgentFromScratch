@@ -60,6 +60,14 @@ public class GaiaDataset {
 		return parse(body);
 	}
 
+	/**
+	 * The first tasks of the split that need a web search according to their annotation, as
+	 * the book selects them. Loads the whole split, level 1 has 53 tasks.
+	 */
+	public List<GaiaProblem> loadNeedingWebSearch(int count) {
+		return load(MAX_ROWS_PER_REQUEST).stream().filter(GaiaProblem::needsWebSearch).limit(count).toList();
+	}
+
 	static List<GaiaProblem> parse(String json) {
 		JsonNode rows = JsonMapper.shared().readTree(json).path("rows");
 		return StreamSupport.stream(rows.spliterator(), false)
@@ -74,6 +82,7 @@ public class GaiaDataset {
 			row.path("Question").asString(),
 			Integer.parseInt(row.path("Level").asString()),
 			row.path("Final answer").asString(),
-			row.path("file_name").asString(""));
+			row.path("file_name").asString(""),
+			row.path("Annotator Metadata").path("Tools").asString(""));
 	}
 }
