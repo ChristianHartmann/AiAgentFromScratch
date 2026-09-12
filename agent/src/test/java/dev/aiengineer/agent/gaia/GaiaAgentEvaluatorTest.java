@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import dev.aiengineer.agent.llm.ContentItem;
 import dev.aiengineer.agent.llm.LlmClient;
+import dev.aiengineer.agent.llm.LlmRefusalException;
 import dev.aiengineer.agent.llm.LlmRequest;
 import dev.aiengineer.agent.llm.LlmResponse;
 import dev.aiengineer.agent.llm.Message;
@@ -80,6 +81,18 @@ class GaiaAgentEvaluatorTest {
 
 		assertThat(result.correct()).isFalse();
 		assertThat(result.failure()).contains("429 quota");
+	}
+
+	@Test
+	void countsARefusalAsUnsolvableLikeTheEvaluatorOfChapter2() {
+		when(llm.generate(any())).thenThrow(new LlmRefusalException(GEMINI, "SAFETY"));
+
+		GaiaResult result = evaluator.evaluate(List.of(task), List.of(GEMINI)).getFirst();
+
+		assertThat(result.correct()).isFalse();
+		assertThat(result.isSolvable()).isFalse();
+		assertThat(result.failure()).isNull();
+		assertThat(result.unsolvableReason()).contains("refused").contains("SAFETY");
 	}
 
 	private static LlmResponse finalAnswer(String output) {

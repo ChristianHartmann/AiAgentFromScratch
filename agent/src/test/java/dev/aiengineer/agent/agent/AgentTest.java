@@ -163,7 +163,7 @@ class AgentTest {
 		AgentResult<String> result = agent().run("What is 1234 x 5678?");
 
 		assertThat(result.status()).isEqualTo(AgentResult.Status.ERROR);
-		assertThat(result.error()).contains("429 quota");
+		assertThat(result.error()).hasMessageContaining("429 quota");
 		assertThat(result.context().events()).hasSize(3);
 	}
 

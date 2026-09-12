@@ -56,17 +56,28 @@ public class GaiaEvaluator {
 	}
 
 	private static GaiaResult toResult(GaiaProblem task, String model, LlmResult<GaiaOutput> output) {
-		if (output.isSuccess()) {
-			GaiaOutput answer = output.value();
-			return new GaiaResult(task.taskId(), model, isCorrect(answer.finalAnswer(), task.finalAnswer()),
-					answer.isSolvable(), answer.finalAnswer(), task.finalAnswer(), answer.unsolvableReason(), null);
-		}
-		if (output.error() instanceof LlmRefusalException refusal) {
+		return output.isSuccess() ? answered(task, model, output.value()) : failed(task, model, output.error());
+	}
+
+	/**
+	 * Scores an answer. Shared with the agent evaluator of chapter 4, so both experiments
+	 * compare directly.
+	 */
+	static GaiaResult answered(GaiaProblem task, String model, GaiaOutput answer) {
+		return new GaiaResult(task.taskId(), model, isCorrect(answer.finalAnswer(), task.finalAnswer()),
+				answer.isSolvable(), answer.finalAnswer(), task.finalAnswer(), answer.unsolvableReason(), null);
+	}
+
+	/**
+	 * A refusal counts as the model's own verdict that the task is unsolvable, any other error
+	 * as a failed call without self assessment.
+	 */
+	static GaiaResult failed(GaiaProblem task, String model, Exception error) {
+		if (error instanceof LlmRefusalException refusal) {
 			return new GaiaResult(task.taskId(), model, false, false, "", task.finalAnswer(),
 					"Model refused to answer (finish reason: " + refusal.finishReason() + ")", null);
 		}
-		return new GaiaResult(task.taskId(), model, false, null, null, task.finalAnswer(), null,
-				output.error().getMessage());
+		return new GaiaResult(task.taskId(), model, false, null, null, task.finalAnswer(), null, error.getMessage());
 	}
 
 	private static String read(Resource resource) {

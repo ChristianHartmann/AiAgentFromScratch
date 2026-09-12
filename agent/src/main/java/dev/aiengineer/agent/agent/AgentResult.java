@@ -4,9 +4,10 @@ import dev.aiengineer.agent.context.ExecutionContext;
 
 /**
  * Outcome of a run with the context for inspection. Unlike the book in chapter 4, a status
- * tells complete runs from runs that hit the step limit or failed; chapter 6 adds more.
+ * tells complete runs from runs that hit the step limit or failed; chapter 6 adds more. The
+ * error is the exception itself, so callers can tell a refusal from other failures.
  */
-public record AgentResult<T>(Status status, T output, ExecutionContext context, String error) {
+public record AgentResult<T>(Status status, T output, ExecutionContext context, Exception error) {
 
 	public enum Status {
 		COMPLETE, MAX_STEPS, ERROR

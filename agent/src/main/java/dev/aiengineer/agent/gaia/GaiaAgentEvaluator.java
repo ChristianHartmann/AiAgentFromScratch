@@ -64,15 +64,10 @@ public class GaiaAgentEvaluator {
 			.build();
 		AgentResult<GaiaOutput> result = agent.run(task.question());
 		return switch (result.status()) {
-			case COMPLETE -> {
-				GaiaOutput answer = result.output();
-				yield new GaiaResult(task.taskId(), model, GaiaEvaluator.isCorrect(answer.finalAnswer(), task.finalAnswer()),
-						answer.isSolvable(), answer.finalAnswer(), task.finalAnswer(), answer.unsolvableReason(), null);
-			}
+			case COMPLETE -> GaiaEvaluator.answered(task, model, result.output());
 			case MAX_STEPS -> new GaiaResult(task.taskId(), model, false, null, null, task.finalAnswer(), null,
 					"No final answer within " + MAX_STEPS + " steps");
-			case ERROR -> new GaiaResult(task.taskId(), model, false, null, null, task.finalAnswer(), null,
-					result.error());
+			case ERROR -> GaiaEvaluator.failed(task, model, result.error());
 		};
 	}
 

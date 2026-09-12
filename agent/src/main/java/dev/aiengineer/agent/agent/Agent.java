@@ -83,7 +83,7 @@ public final class Agent<T> {
 				step(context);
 			}
 			catch (RuntimeException ex) {
-				return new AgentResult<>(AgentResult.Status.ERROR, null, context, String.valueOf(ex.getMessage()));
+				return new AgentResult<>(AgentResult.Status.ERROR, null, context, ex);
 			}
 			Event last = context.events().getLast();
 			if (isFinal(last)) {
