@@ -11,6 +11,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
+import java.util.function.Supplier;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
@@ -20,6 +21,13 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.ai.embedding.Embedding;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.embedding.EmbeddingOptions;
+import org.springframework.ai.embedding.EmbeddingRequest;
+import org.springframework.ai.google.genai.text.GoogleGenAiTextEmbeddingOptions;
+import org.springframework.ai.google.genai.text.GoogleGenAiTextEmbeddingOptions.TaskType;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
@@ -30,7 +38,8 @@ import tools.jackson.databind.json.JsonMapper;
  * in the book: callers name a model, everything provider specific happens behind this class.
  *
  * <p>Every call waits for a free slot of its provider first, so the configured limit holds
- * across batches and single calls from different threads alike.
+ * across batches and single calls from different threads alike. Embeddings (section 5.3.1) go
+ * through the same slots, those of the provider of the embedding model.
  */
 @Service
 public class LlmClient {
@@ -39,14 +48,32 @@ public class LlmClient {
 		.enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
 		.build();
 
+	private static final int MAX_EMBEDDING_PORTION = 100;
+
+	/**
+	 * The configured EmbeddingModel is Gemini's, so embeddings share the slots of Google.
+	 */
+	private static final Provider EMBEDDING_PROVIDER = Provider.GOOGLE;
+
 	private final ModelRouter router;
+
+	private final EmbeddingModel embeddingModel;
 
 	private final Map<Provider, Semaphore> slots = new EnumMap<>(Provider.class);
 
-	public LlmClient(ModelRouter router, ConcurrencyProperties concurrency) {
+	@Autowired
+	public LlmClient(ModelRouter router, ConcurrencyProperties concurrency, EmbeddingModel embeddingModel) {
 		this.router = router;
+		this.embeddingModel = embeddingModel;
 		Arrays.stream(Provider.values())
 			.forEach(provider -> slots.put(provider, new Semaphore(concurrency.limit(provider))));
+	}
+
+	/**
+	 * A client for chat only, without embeddings.
+	 */
+	public LlmClient(ModelRouter router, ConcurrencyProperties concurrency) {
+		this(router, concurrency, null);
 	}
 
 	public String complete(String model, List<ContentItem> messages) {
@@ -103,6 +130,38 @@ public class LlmClient {
 	}
 
 	/**
+	 * Embeds the texts, section 5.3.1, one vector per text in the order of the texts. Gemini
+	 * takes at most 100 texts per call and Spring AI does not split larger requests, hence the
+	 * portions. The purpose becomes Gemini's task type; other models only read the generic
+	 * fields of the options.
+	 */
+	public float[][] embed(List<String> texts, EmbeddingPurpose purpose) {
+		if (texts.isEmpty()) {
+			return new float[0][];
+		}
+		if (embeddingModel == null) {
+			throw new IllegalStateException("This client has no embedding model");
+		}
+		EmbeddingOptions options = GoogleGenAiTextEmbeddingOptions.builder()
+			.taskType(purpose == EmbeddingPurpose.QUERY ? TaskType.RETRIEVAL_QUERY : TaskType.RETRIEVAL_DOCUMENT)
+			.build();
+		float[][] vectors = new float[texts.size()][];
+		for (int start = 0; start < texts.size(); start += MAX_EMBEDDING_PORTION) {
+			List<String> portion = List.copyOf(texts.subList(start, Math.min(start + MAX_EMBEDDING_PORTION, texts.size())));
+			List<Embedding> embeddings = withSlot(EMBEDDING_PROVIDER, "embeddings",
+					() -> embeddingModel.call(new EmbeddingRequest(portion, options))).getResults();
+			if (embeddings.size() != portion.size()) {
+				throw new IllegalStateException(
+						"Expected " + portion.size() + " embeddings, the model returned " + embeddings.size());
+			}
+			for (int i = 0; i < embeddings.size(); i++) {
+				vectors[start + i] = embeddings.get(i).getOutput();
+			}
+		}
+		return vectors;
+	}
+
+	/**
 	 * Every tool call gets an id, so each result can be tied to its call even when the model
 	 * calls the same tool twice in one answer. Spring AI leaves the id empty for Gemini: it
 	 * reads only name and arguments of a function call and matches results by name and order.
@@ -112,17 +171,22 @@ public class LlmClient {
 	}
 
 	private ChatResponse call(String model, List<ContentItem> messages, ChatOptions options) {
-		Semaphore slot = slots.get(router.provider(model));
+		Provider provider = router.provider(model);
+		return withSlot(provider, model,
+				() -> router.chatModel(model).call(new Prompt(toSpringAi(provider, messages), options)));
+	}
+
+	private <R> R withSlot(Provider provider, String purpose, Supplier<R> action) {
+		Semaphore slot = slots.get(provider);
 		try {
 			slot.acquire();
 		}
 		catch (InterruptedException ex) {
 			Thread.currentThread().interrupt();
-			throw new IllegalStateException("Interrupted while waiting for a free slot for " + model, ex);
+			throw new IllegalStateException("Interrupted while waiting for a free slot for " + purpose, ex);
 		}
 		try {
-			Prompt prompt = new Prompt(toSpringAi(router.provider(model), messages), options);
-			return router.chatModel(model).call(prompt);
+			return action.get();
 		}
 		finally {
 			slot.release();

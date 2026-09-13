@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.google.genai.Client;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.google.genai.text.GoogleGenAiTextEmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -33,5 +35,11 @@ class ChatModelBeansTest {
 		assertThat(context.getBeanNamesForType(Client.class)).containsExactly("googleGenAiClient");
 		assertThat(context.getBeanFactory().getBeanDefinition("googleGenAiClient").getFactoryBeanName())
 			.isEqualTo("googleGenAiClientConfiguration");
+	}
+
+	@Test
+	void offersExactlyOneEmbeddingModelBackedByGemini() {
+		assertThat(context.getBeanNamesForType(EmbeddingModel.class)).containsExactly("embeddingModel");
+		assertThat(context.getBean(EmbeddingModel.class)).isInstanceOf(GoogleGenAiTextEmbeddingModel.class);
 	}
 }
