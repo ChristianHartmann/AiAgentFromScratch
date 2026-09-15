@@ -28,6 +28,7 @@ dependencies {
 	implementation("org.springframework.ai:spring-ai-starter-model-google-genai")
 	implementation("org.springframework.ai:spring-ai-google-genai-embedding")
 	implementation("org.springframework.ai:spring-ai-mcp")
+	implementation("com.knuddels:jtokkit:1.1.0")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
