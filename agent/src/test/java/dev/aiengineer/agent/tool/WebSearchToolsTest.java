@@ -3,6 +3,9 @@ package dev.aiengineer.agent.tool;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.startsWith;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.queryParam;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -13,6 +16,7 @@ import dev.aiengineer.agent.tool.WebSearchTools.Category;
 import dev.aiengineer.agent.tool.WebSearchTools.SearchResult;
 import dev.aiengineer.agent.tool.WebSearchTools.TimeRange;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
@@ -21,6 +25,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import tools.jackson.databind.json.JsonMapper;
 
 class WebSearchToolsTest {
 
@@ -30,7 +35,10 @@ class WebSearchToolsTest {
 
 	private final MockRestServiceServer server = MockRestServiceServer.bindTo(restClient).build();
 
-	private final WebSearchTools webSearch = new WebSearchTools(restClient, new SearxngProperties("http://localhost:8888"));
+	private final PageFetcher pageFetcher = mock(PageFetcher.class);
+
+	private final WebSearchTools webSearch = new WebSearchTools(restClient,
+			new SearxngProperties("http://localhost:8888"), pageFetcher);
 
 	@Test
 	void asksForJson() {
@@ -42,7 +50,7 @@ class WebSearchToolsTest {
 				.doesNotContain("categories").doesNotContain("time_range"))
 			.andRespond(withSuccess(response(1), MediaType.APPLICATION_JSON));
 
-		webSearch.searchWeb("Kipchoge", null, null, null);
+		webSearch.searchWeb("Kipchoge", null, null, null, null);
 
 		server.verify();
 	}
@@ -54,7 +62,7 @@ class WebSearchToolsTest {
 			.andExpect(queryParam("time_range", "week"))
 			.andRespond(withSuccess(response(1), MediaType.APPLICATION_JSON));
 
-		webSearch.searchWeb("Kipchoge", null, Category.NEWS, TimeRange.WEEK);
+		webSearch.searchWeb("Kipchoge", null, Category.NEWS, TimeRange.WEEK, null);
 
 		server.verify();
 	}
@@ -63,7 +71,7 @@ class WebSearchToolsTest {
 	void returnsTitleUrlAndContentOfEveryResult() {
 		server.expect(requestTo(startsWith(SEARCH))).andRespond(withSuccess(response(1), MediaType.APPLICATION_JSON));
 
-		List<SearchResult> results = webSearch.searchWeb("Kipchoge", null, null, null);
+		List<SearchResult> results = webSearch.searchWeb("Kipchoge", null, null, null, null);
 
 		assertThat(results).containsExactly(new SearchResult("Title 0", "https://example.com/0", "Content 0"));
 	}
@@ -72,14 +80,14 @@ class WebSearchToolsTest {
 	void returnsFiveResultsUnlessToldOtherwise() {
 		server.expect(requestTo(startsWith(SEARCH))).andRespond(withSuccess(response(7), MediaType.APPLICATION_JSON));
 
-		assertThat(webSearch.searchWeb("Kipchoge", null, null, null)).hasSize(5);
+		assertThat(webSearch.searchWeb("Kipchoge", null, null, null, null)).hasSize(5);
 	}
 
 	@Test
 	void cutsTheResultsToTheRequestedNumber() {
 		server.expect(requestTo(startsWith(SEARCH))).andRespond(withSuccess(response(7), MediaType.APPLICATION_JSON));
 
-		assertThat(webSearch.searchWeb("Kipchoge", 2, null, null)).extracting(SearchResult::title)
+		assertThat(webSearch.searchWeb("Kipchoge", 2, null, null, null)).extracting(SearchResult::title)
 			.containsExactly("Title 0", "Title 1");
 	}
 
@@ -87,7 +95,7 @@ class WebSearchToolsTest {
 	void explainsWhatToDoWhenJsonIsDisabled() {
 		server.expect(requestTo(startsWith(SEARCH))).andRespond(withStatus(HttpStatus.FORBIDDEN));
 
-		assertThatThrownBy(() -> webSearch.searchWeb("Kipchoge", null, null, null))
+		assertThatThrownBy(() -> webSearch.searchWeb("Kipchoge", null, null, null, null))
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("403")
 			.hasMessageContaining("settings.yml");
@@ -96,6 +104,44 @@ class WebSearchToolsTest {
 	/**
 	 * A response of the SearXNG JSON API, reduced to the fields we read plus a few we ignore.
 	 */
+	@Test
+	void loadsThePageOfEveryResultOnRequest() {
+		server.expect(requestTo(startsWith(SEARCH))).andRespond(withSuccess(response(2), MediaType.APPLICATION_JSON));
+		when(pageFetcher.text("https://example.com/0")).thenReturn(Optional.of("Full page 0"));
+		when(pageFetcher.text("https://example.com/1")).thenReturn(Optional.of("Full page 1"));
+
+		List<SearchResult> results = webSearch.searchWeb("Kipchoge", null, null, null, true);
+
+		assertThat(results).extracting(SearchResult::rawContent).containsExactly("Full page 0", "Full page 1");
+		assertThat(results).extracting(SearchResult::content).containsExactly("Content 0", "Content 1");
+	}
+
+	@Test
+	void keepsTheSnippetWhenAPageCannotBeLoaded() {
+		server.expect(requestTo(startsWith(SEARCH))).andRespond(withSuccess(response(1), MediaType.APPLICATION_JSON));
+		when(pageFetcher.text("https://example.com/0")).thenReturn(Optional.empty());
+
+		assertThat(webSearch.searchWeb("Kipchoge", null, null, null, true))
+			.containsExactly(new SearchResult("Title 0", "https://example.com/0", "Content 0"));
+	}
+
+	@Test
+	void loadsNoPagesUnlessAsked() {
+		server.expect(requestTo(startsWith(SEARCH))).andRespond(withSuccess(response(1), MediaType.APPLICATION_JSON));
+
+		webSearch.searchWeb("Kipchoge", null, null, null, null);
+
+		verifyNoInteractions(pageFetcher);
+	}
+
+	@Test
+	void leavesAnEmptyPageContentOutOfTheJson() {
+		String json = JsonMapper.shared()
+			.writeValueAsString(new SearchResult("Title", "https://example.com", "Snippet"));
+
+		assertThat(json).doesNotContain("rawContent");
+	}
+
 	private static String response(int count) {
 		String results = IntStream.range(0, count)
 			.mapToObj(i -> """

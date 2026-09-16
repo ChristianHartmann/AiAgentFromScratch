@@ -23,9 +23,17 @@ class WebSearchToolsLiveTest {
 	void findsResultsForARealQuery() {
 		LiveTests.assumeSearxngRunning();
 
-		assertThat(webSearch.searchWeb("Eliud Kipchoge marathon world record", 3, null, null))
+		assertThat(webSearch.searchWeb("Eliud Kipchoge marathon world record", 3, null, null, null))
 			.isNotEmpty()
 			.hasSizeLessThanOrEqualTo(3)
 			.allSatisfy(result -> assertThat(result.url()).startsWith("http"));
+	}
+
+	@Test
+	void loadsThePagesOfRealResults() {
+		LiveTests.assumeSearxngRunning();
+
+		assertThat(webSearch.searchWeb("Eliud Kipchoge marathon world record", 3, null, null, true))
+			.anySatisfy(result -> assertThat(result.rawContent()).hasSizeGreaterThan(result.content().length()));
 	}
 }

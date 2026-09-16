@@ -16,6 +16,7 @@ import dev.aiengineer.agent.llm.Message;
 import dev.aiengineer.agent.llm.Role;
 import dev.aiengineer.agent.llm.ToolCall;
 import dev.aiengineer.agent.llm.Usage;
+import dev.aiengineer.agent.tool.PageFetcher;
 import dev.aiengineer.agent.tool.SearxngProperties;
 import dev.aiengineer.agent.tool.WebSearchTools;
 import java.util.ArrayList;
@@ -35,7 +36,7 @@ class GaiaAgentEvaluatorTest {
 	private final LlmClient llm = mock(LlmClient.class);
 
 	private final GaiaAgentEvaluator evaluator = new GaiaAgentEvaluator(llm,
-			new WebSearchTools(RestClient.builder(), new SearxngProperties("http://localhost:8888")),
+			new WebSearchTools(RestClient.builder(), new SearxngProperties("http://localhost:8888"), new PageFetcher()),
 			new ByteArrayResource("system prompt".getBytes()));
 
 	@Test

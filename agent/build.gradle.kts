@@ -29,6 +29,7 @@ dependencies {
 	implementation("org.springframework.ai:spring-ai-google-genai-embedding")
 	implementation("org.springframework.ai:spring-ai-mcp")
 	implementation("com.knuddels:jtokkit:1.1.0")
+	implementation("org.jsoup:jsoup:1.23.2")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

@@ -57,7 +57,7 @@ class AgentLiveTest {
 			.build()
 			.run("Who won the 2025 Nobel Prize in Physics?");
 
-		verify(searchSpy, atLeastOnce()).searchWeb(anyString(), any(), any(), any());
+		verify(searchSpy, atLeastOnce()).searchWeb(anyString(), any(), any(), any(), any());
 		assertThat(result.status()).isEqualTo(AgentResult.Status.COMPLETE);
 		assertThat(result.output()).containsAnyOf("Clarke", "Devoret", "Martinis");
 	}
