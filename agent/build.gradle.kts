@@ -30,6 +30,8 @@ dependencies {
 	implementation("org.springframework.ai:spring-ai-mcp")
 	implementation("com.knuddels:jtokkit:1.1.0")
 	implementation("org.jsoup:jsoup:1.23.2")
+	implementation("org.apache.poi:poi:5.5.1")
+	implementation("org.apache.poi:poi-ooxml:5.5.1")
 	testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
