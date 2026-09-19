@@ -50,4 +50,16 @@ class ContentItemTest {
 		assertThat(ToolResult.error(call, "Cannot divide by zero"))
 			.isEqualTo(new ToolResult("call_1", "calculator", ToolResult.Status.ERROR, "Cannot divide by zero"));
 	}
+
+	@Test
+	void comparesAttachmentsByTheirContent() {
+		assertThat(new Attachment(new byte[] { 1, 2 }, "application/pdf"))
+			.isEqualTo(new Attachment(new byte[] { 1, 2 }, "application/pdf"))
+			.isNotEqualTo(new Attachment(new byte[] { 1, 3 }, "application/pdf"));
+	}
+
+	@Test
+	void aMessageWithoutAttachmentsHasAnEmptyList() {
+		assertThat(new Message(Role.USER, "hi").attachments()).isEmpty();
+	}
 }

@@ -20,6 +20,7 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
+import org.springframework.ai.content.Media;
 import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -29,6 +30,7 @@ import org.springframework.ai.google.genai.text.GoogleGenAiTextEmbeddingOptions;
 import org.springframework.ai.google.genai.text.GoogleGenAiTextEmbeddingOptions.TaskType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.MimeType;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DeserializationFeature;
 import tools.jackson.databind.json.JsonMapper;
@@ -245,7 +247,7 @@ public class LlmClient {
 			switch (item) {
 				case Message message when message.role() == Role.ASSISTANT -> assistant = new PendingAssistant(message);
 				case Message message when message.role() == Role.SYSTEM -> result.add(new SystemMessage(message.content()));
-				case Message message -> result.add(new UserMessage(message.content()));
+				case Message message -> result.add(userMessage(message));
 				case ToolCall call -> {
 					if (assistant == null) {
 						assistant = new PendingAssistant(new Message(Role.ASSISTANT, ""));
@@ -261,6 +263,16 @@ public class LlmClient {
 		}
 		flushToolResults(toolResults, result);
 		return result;
+	}
+
+	private static UserMessage userMessage(Message message) {
+		List<Media> media = message.attachments().stream()
+			.map(attachment -> Media.builder()
+				.mimeType(MimeType.valueOf(attachment.mimeType()))
+				.data(attachment.data())
+				.build())
+			.toList();
+		return UserMessage.builder().text(message.content()).media(media).build();
 	}
 
 	private static final class PendingAssistant {

@@ -13,6 +13,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.ai.chat.messages.ToolResponseMessage;
+import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
@@ -98,5 +99,20 @@ class LlmClientTranslationTest {
 		request.tools().addAll(tools);
 		request.toolChoice(ToolChoice.AUTO);
 		return request;
+	}
+
+	@Test
+	void sendsAttachmentsAsMediaOfTheUserMessage() {
+		Message question = new Message(Role.USER, "What does the PDF say?", Map.of(),
+				List.of(new Attachment(new byte[] { 37, 80, 68, 70 }, "application/pdf")));
+
+		List<org.springframework.ai.chat.messages.Message> sent = send(List.of(question));
+
+		UserMessage user = (UserMessage) sent.getFirst();
+		assertThat(user.getText()).isEqualTo("What does the PDF say?");
+		assertThat(user.getMedia()).singleElement().satisfies(media -> {
+			assertThat(media.getMimeType().toString()).isEqualTo("application/pdf");
+			assertThat(media.getDataAsByteArray()).containsExactly(37, 80, 68, 70);
+		});
 	}
 }
