@@ -104,7 +104,7 @@
                 "Level": "2",
                 "Final answer": "1432",
                 "file_name": "chronicle.pdf",
-                "file_path": "/tmp/example/chronicle.pdf",
+                "file_path": "2023/validation/chronicle.pdf",
                 "Annotator Metadata": {
                     "Steps": "1. Opened the chronicle.\n2. Read the first page.",
                     "Number of steps": "2",

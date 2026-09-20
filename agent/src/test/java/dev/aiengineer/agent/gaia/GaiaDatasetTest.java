@@ -61,6 +61,14 @@ class GaiaDatasetTest {
 	}
 
 	@Test
+	void readsThePathOfTheAttachment() throws IOException {
+		List<GaiaProblem> tasks = GaiaDataset.parse(sampleResponse());
+
+		assertThat(tasks).extracting(GaiaProblem::filePath)
+			.containsExactly("", "2023/validation/chronicle.pdf", "", "");
+	}
+
+	@Test
 	void loadsOnlyTasksThatNeedAWebSearch() throws IOException {
 		server.expect(requestTo(startsWith("https://datasets-server.huggingface.co/rows")))
 			.andExpect(queryParam("length", "100"))

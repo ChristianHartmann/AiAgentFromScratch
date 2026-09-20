@@ -83,6 +83,7 @@ public class GaiaDataset {
 			Integer.parseInt(row.path("Level").asString()),
 			row.path("Final answer").asString(),
 			row.path("file_name").asString(""),
-			row.path("Annotator Metadata").path("Tools").asString(""));
+			row.path("Annotator Metadata").path("Tools").asString(""),
+			row.path("file_path").asString(""));
 	}
 }
