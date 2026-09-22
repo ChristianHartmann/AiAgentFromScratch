@@ -1,5 +1,7 @@
 package dev.aiengineer.agent.agent;
 
+import dev.aiengineer.agent.callback.AfterToolCallback;
+import dev.aiengineer.agent.callback.BeforeToolCallback;
 import dev.aiengineer.agent.context.Event;
 import dev.aiengineer.agent.context.ExecutionContext;
 import dev.aiengineer.agent.llm.ContentItem;
@@ -17,11 +19,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * The ReAct agent of section 4.6: think, act, observe, repeat. Tools run one after another;
  * a failing or unknown tool becomes an error result the model sees in the next step. A
  * failing model call ends the run with status ERROR instead of looping on silently.
+ *
+ * <p>Callbacks before and after every tool (section 5.5) are the seam for approvals and for
+ * shortening results; chapter 6 adds one before the model call.
  */
 public final class Agent<T> {
 
@@ -41,6 +47,10 @@ public final class Agent<T> {
 
 	private final Class<T> outputType;
 
+	private final List<BeforeToolCallback> beforeToolCallbacks;
+
+	private final List<AfterToolCallback> afterToolCallbacks;
+
 	private Agent(Builder<T> builder) {
 		this.llm = builder.llm;
 		this.model = Objects.requireNonNull(builder.model, "model");
@@ -53,6 +63,8 @@ public final class Agent<T> {
 		}
 		this.tools = byName(allTools);
 		this.maxSteps = builder.maxSteps;
+		this.beforeToolCallbacks = builder.beforeToolCallbacks;
+		this.afterToolCallbacks = builder.afterToolCallbacks;
 	}
 
 	public static Builder<String> builder(LlmClient llm) {
@@ -130,23 +142,78 @@ public final class Agent<T> {
 
 	/**
 	 * Runs every tool call in order and returns one result per call, with the id of the call.
+	 * As in Listing 5.25: the first before callback with a result replaces the tool, the first
+	 * after callback with a result replaces the result, and after callbacks also see results
+	 * of before callbacks. The book's repository differs from its text in both points; this
+	 * follows the text.
 	 */
 	public List<ToolResult> act(ExecutionContext context, List<ToolCall> toolCalls) {
 		List<ToolResult> results = new ArrayList<>();
 		for (ToolCall call : toolCalls) {
-			Tool tool = tools.get(call.name());
-			if (tool == null) {
-				results.add(ToolResult.error(call, "Tool '" + call.name() + "' not found"));
-				continue;
-			}
-			try {
-				results.add(ToolResult.success(call, tool.execute(context, call.arguments())));
-			}
-			catch (Exception ex) {
-				results.add(ToolResult.error(call, ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage()));
-			}
+			ToolResult result = before(context, call).orElseGet(() -> execute(context, call));
+			results.add(after(context, call, result));
 		}
 		return results;
+	}
+
+	private ToolResult execute(ExecutionContext context, ToolCall call) {
+		Tool tool = tools.get(call.name());
+		if (tool == null) {
+			return ToolResult.error(call, "Tool '" + call.name() + "' not found");
+		}
+		try {
+			return ToolResult.success(call, tool.execute(context, call.arguments()));
+		}
+		catch (Exception ex) {
+			return ToolResult.error(call, messageOf(ex));
+		}
+	}
+
+	/**
+	 * A failing before callback never lets the tool run: for an approval, a failure must not
+	 * mean "execute anyway".
+	 */
+	private Optional<ToolResult> before(ExecutionContext context, ToolCall call) {
+		for (BeforeToolCallback callback : beforeToolCallbacks) {
+			try {
+				Optional<ToolResult> result = callback.beforeTool(context, call);
+				if (result.isPresent()) {
+					return Optional.of(checked(call, result.get()));
+				}
+			}
+			catch (RuntimeException ex) {
+				return Optional.of(ToolResult.error(call, "Callback before " + call.name() + " failed: " + messageOf(ex)));
+			}
+		}
+		return Optional.empty();
+	}
+
+	private ToolResult after(ExecutionContext context, ToolCall call, ToolResult result) {
+		for (AfterToolCallback callback : afterToolCallbacks) {
+			try {
+				Optional<ToolResult> replaced = callback.afterTool(context, call, result);
+				if (replaced.isPresent()) {
+					return checked(call, replaced.get());
+				}
+			}
+			catch (RuntimeException ex) {
+				return ToolResult.error(call, "Callback after " + call.name() + " failed: " + messageOf(ex));
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Every call needs exactly one result with its id, otherwise the provider rejects the
+	 * next request.
+	 */
+	private static ToolResult checked(ToolCall call, ToolResult result) {
+		return result.toolCallId().equals(call.id()) ? result
+				: ToolResult.error(call, "A callback returned a result for call " + result.toolCallId());
+	}
+
+	private static String messageOf(Exception ex) {
+		return ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage();
 	}
 
 	private boolean isFinal(Event event) {
@@ -209,6 +276,10 @@ public final class Agent<T> {
 
 		private Class<T> outputType;
 
+		private List<BeforeToolCallback> beforeToolCallbacks = List.of();
+
+		private List<AfterToolCallback> afterToolCallbacks = List.of();
+
 		private Builder(LlmClient llm) {
 			this.llm = Objects.requireNonNull(llm, "llm");
 		}
@@ -221,6 +292,8 @@ public final class Agent<T> {
 			this.tools = other.tools;
 			this.maxSteps = other.maxSteps;
 			this.outputType = outputType;
+			this.beforeToolCallbacks = other.beforeToolCallbacks;
+			this.afterToolCallbacks = other.afterToolCallbacks;
 		}
 
 		/**
@@ -252,6 +325,22 @@ public final class Agent<T> {
 
 		public Builder<T> maxSteps(int maxSteps) {
 			this.maxSteps = maxSteps;
+			return this;
+		}
+
+		/**
+		 * Callbacks that run before every tool, in order; the first with a result wins.
+		 */
+		public Builder<T> beforeToolCallbacks(List<BeforeToolCallback> callbacks) {
+			this.beforeToolCallbacks = List.copyOf(callbacks);
+			return this;
+		}
+
+		/**
+		 * Callbacks that run after every tool, in order; the first with a result wins.
+		 */
+		public Builder<T> afterToolCallbacks(List<AfterToolCallback> callbacks) {
+			this.afterToolCallbacks = List.copyOf(callbacks);
 			return this;
 		}
 
