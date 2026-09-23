@@ -20,4 +20,8 @@ public interface Tool {
 	default String description() {
 		return definition().description();
 	}
+
+	default boolean requiresConfirmation() {
+		return false;
+	}
 }

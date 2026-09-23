@@ -14,4 +14,10 @@ import java.lang.annotation.Target;
 public @interface ToolFunction {
 
 	String value();
+
+	/**
+	 * Whether a person has to approve every call (section 5.5.3). The book keeps a list of
+	 * dangerous tool names; chapter 6 moves to a property of the tool, as here.
+	 */
+	boolean requiresConfirmation() default false;
 }

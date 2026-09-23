@@ -57,6 +57,11 @@ public final class FunctionTool implements Tool {
 	}
 
 	@Override
+	public boolean requiresConfirmation() {
+		return method.getAnnotation(ToolFunction.class).requiresConfirmation();
+	}
+
+	@Override
 	public Object execute(ExecutionContext context, String arguments) throws Exception {
 		JsonNode values = parse(arguments);
 		Object[] parameters = Arrays.stream(method.getParameters())

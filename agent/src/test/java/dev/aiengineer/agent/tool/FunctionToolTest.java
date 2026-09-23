@@ -44,6 +44,11 @@ class FunctionToolTest {
 			return count;
 		}
 
+		@ToolFunction(value = "Removes a thing.", requiresConfirmation = true)
+		public String remove(String name) {
+			return "removed " + name;
+		}
+
 		public String notATool() {
 			return "hidden";
 		}
@@ -55,7 +60,7 @@ class FunctionToolTest {
 
 	@Test
 	void offersEveryAnnotatedMethodSortedByName() {
-		assertThat(tools).extracting(Tool::name).containsExactly("count", "fail", "greet", "sum", "weather");
+		assertThat(tools).extracting(Tool::name).containsExactly("count", "fail", "greet", "remove", "sum", "weather");
 	}
 
 	@Test
@@ -120,6 +125,12 @@ class FunctionToolTest {
 			.isInstanceOf(IllegalArgumentException.class)
 			.satisfies(ex -> assertThat(ex.getMessage()).contains("CELSIUS").contains("FAHRENHEIT")
 				.doesNotContain("location information"));
+	}
+
+	@Test
+	void takesTheNeedForConfirmationFromTheAnnotation() {
+		assertThat(tool("remove").requiresConfirmation()).isTrue();
+		assertThat(tool("greet").requiresConfirmation()).isFalse();
 	}
 
 	private Object execute(String name, String arguments) throws Exception {
