@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.aiengineer.agent.callback.SearchResultCompressor;
 import dev.aiengineer.agent.llm.ContentItem;
 import dev.aiengineer.agent.llm.LlmClient;
 import dev.aiengineer.agent.llm.LlmRefusalException;
@@ -151,6 +152,12 @@ class GaiaAgentEvaluatorTest {
 
 		assertThat(result.correct()).isFalse();
 		assertThat(result.failure()).contains("401");
+	}
+
+	@Test
+	void shortensSearchResultsWithTheCompressor() {
+		assertThat(evaluator.afterToolCallbacks()).singleElement()
+			.isInstanceOf(SearchResultCompressor.class);
 	}
 
 	private static LlmResponse finalAnswer(String output) {

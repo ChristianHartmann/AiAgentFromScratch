@@ -2,7 +2,10 @@ package dev.aiengineer.agent.gaia;
 
 import dev.aiengineer.agent.agent.Agent;
 import dev.aiengineer.agent.agent.AgentResult;
+import dev.aiengineer.agent.callback.AfterToolCallback;
+import dev.aiengineer.agent.callback.SearchResultCompressor;
 import dev.aiengineer.agent.llm.LlmClient;
+import dev.aiengineer.agent.rag.VectorSearch;
 import dev.aiengineer.agent.tool.FileTools;
 import dev.aiengineer.agent.tool.FunctionTool;
 import dev.aiengineer.agent.tool.MediaTools;
@@ -86,6 +89,7 @@ public class GaiaAgentEvaluator {
 				.name("gaia-agent")
 				.instructions(systemPrompt)
 				.tools(tools)
+				.afterToolCallbacks(afterToolCallbacks())
 				.maxSteps(MAX_STEPS)
 				.outputType(GaiaOutput.class)
 				.build();
@@ -105,6 +109,13 @@ public class GaiaAgentEvaluator {
 				delete(workspace);
 			}
 		}
+	}
+
+	/**
+	 * Long search results are shortened to the chunks closest to the query, as in 5.5.4.
+	 */
+	List<AfterToolCallback> afterToolCallbacks() {
+		return List.of(new SearchResultCompressor(new VectorSearch(llm)));
 	}
 
 	/**
