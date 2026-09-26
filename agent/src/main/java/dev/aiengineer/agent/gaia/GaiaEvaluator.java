@@ -41,7 +41,7 @@ public class GaiaEvaluator {
 	/**
 	 * GAIA uses exact match, only case and surrounding whitespace are forgiven.
 	 */
-	static boolean isCorrect(String prediction, String answer) {
+	public static boolean isCorrect(String prediction, String answer) {
 		return prediction != null && prediction.strip().equalsIgnoreCase(answer.strip());
 	}
 

@@ -8,6 +8,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -83,6 +84,37 @@ class PageFetcherTest {
 		assertThat(fetcher.text("file:///etc/passwd")).isEmpty();
 		assertThat(fetcher.text("ftp://example.com/page")).isEmpty();
 		assertThat(fetcher.text("not a url")).isEmpty();
+	}
+
+	@Test
+	void givesUpOnPagesThatStallInTheMiddleOfTheBody() {
+		server.createContext("/stall", exchange -> {
+			exchange.getResponseHeaders().add("Content-Type", "text/html");
+			exchange.sendResponseHeaders(200, 0);
+			OutputStream out = exchange.getResponseBody();
+			out.write("<html><body>hello".getBytes(StandardCharsets.UTF_8));
+			out.flush();
+			try {
+				Thread.sleep(3_000);
+			}
+			catch (InterruptedException ex) {
+				Thread.currentThread().interrupt();
+			}
+			exchange.close();
+		});
+
+		long start = System.nanoTime();
+		Optional<String> text = fetcher.text(url("/stall"));
+
+		assertThat(text).isEmpty();
+		assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofMillis(1_500));
+	}
+
+	@Test
+	void skipsUrlsTheHttpClientCannotRequest() {
+		assertThat(fetcher.text("https://my_site.example.com/page")).isEmpty();
+		assertThat(fetcher.text("https:///path")).isEmpty();
+		assertThat(fetcher.text(null)).isEmpty();
 	}
 
 	private void serve(String path, String contentType, String body) {

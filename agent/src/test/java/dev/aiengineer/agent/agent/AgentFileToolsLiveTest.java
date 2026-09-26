@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import dev.aiengineer.agent.gaia.GaiaAgentEvaluator;
 import dev.aiengineer.agent.gaia.GaiaAttachments;
 import dev.aiengineer.agent.gaia.GaiaDataset;
+import dev.aiengineer.agent.gaia.GaiaEvaluator;
 import dev.aiengineer.agent.gaia.GaiaProblem;
 import dev.aiengineer.agent.gaia.GaiaProperties;
 import dev.aiengineer.agent.llm.LiveTests;
@@ -91,8 +92,13 @@ class AgentFileToolsLiveTest {
 				.build()
 				.run(GaiaAgentEvaluator.prompt(task));
 
-			assertThat(result.status()).isEqualTo(AgentResult.Status.COMPLETE);
-			assertThat(result.output()).contains(task.finalAnswer());
+			assertThat(result.status())
+				.withFailMessage(() -> "The run ended with " + result.status() + (result.error() == null ? ""
+						: ": " + result.error().getClass().getSimpleName() + " " + result.error().getMessage()))
+				.isEqualTo(AgentResult.Status.COMPLETE);
+			assertThat(GaiaEvaluator.isCorrect(result.output(), task.finalAnswer()))
+				.withFailMessage("The agent's answer does not match the dataset answer (neither is printed)")
+				.isTrue();
 		}
 		finally {
 			FileSystemUtils.deleteRecursively(workspace);

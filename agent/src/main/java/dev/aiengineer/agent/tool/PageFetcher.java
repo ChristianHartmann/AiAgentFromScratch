@@ -10,6 +10,10 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.jsoup.Jsoup;
 import org.springframework.stereotype.Component;
 
@@ -46,38 +50,65 @@ public class PageFetcher {
 
 	/**
 	 * The text of an HTML page, at most 50,000 characters; empty for anything that is not
-	 * http or https, not HTML, not 200, or slower than the timeout.
+	 * http or https, not HTML, not 200, or not complete within the timeout. The timeout covers
+	 * the whole page: the request timeout of the HTTP client ends with the headers, and a page
+	 * that stalls in the middle of its body would otherwise block the search.
 	 */
 	public Optional<String> text(String url) {
-		URI uri;
-		try {
-			uri = URI.create(url);
-		}
-		catch (IllegalArgumentException ex) {
+		HttpRequest request = requestFor(url);
+		if (request == null) {
 			return Optional.empty();
 		}
-		if (!"http".equals(uri.getScheme()) && !"https".equals(uri.getScheme())) {
-			return Optional.empty();
-		}
-		HttpRequest request = HttpRequest.newBuilder(uri).timeout(timeout).header("User-Agent", USER_AGENT).GET().build();
+		FutureTask<Optional<String>> fetch = new FutureTask<>(() -> fetch(request, url));
+		Thread.ofVirtual().start(fetch);
 		try {
-			HttpResponse<InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
-			try (InputStream body = response.body()) {
-				String contentType = response.headers().firstValue("Content-Type").orElse("").toLowerCase(Locale.ROOT);
-				if (response.statusCode() != 200 || !contentType.contains("text/html")) {
-					return Optional.empty();
-				}
-				byte[] html = body.readNBytes(MAX_BYTES);
-				String text = Jsoup.parse(new ByteArrayInputStream(html), null, url).body().text();
-				return text.isBlank() ? Optional.empty() : Optional.of(text.substring(0, Math.min(text.length(), MAX_CHARS)));
-			}
+			return fetch.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
 		}
-		catch (IOException ex) {
+		catch (TimeoutException | ExecutionException ex) {
+			fetch.cancel(true);
 			return Optional.empty();
 		}
 		catch (InterruptedException ex) {
+			fetch.cancel(true);
 			Thread.currentThread().interrupt();
 			return Optional.empty();
+		}
+	}
+
+	/**
+	 * A request for http and https URLs the client can send, otherwise null. Search results
+	 * contain URLs the client rejects, such as hosts with an underscore.
+	 */
+	private HttpRequest requestFor(String url) {
+		if (url == null) {
+			return null;
+		}
+		try {
+			URI uri = URI.create(url);
+			if (!"http".equals(uri.getScheme()) && !"https".equals(uri.getScheme())) {
+				return null;
+			}
+			return HttpRequest.newBuilder(uri).timeout(timeout).header("User-Agent", USER_AGENT).GET().build();
+		}
+		catch (IllegalArgumentException ex) {
+			return null;
+		}
+	}
+
+	/**
+	 * Runs on its own virtual thread; cancelling interrupts it, which ends a blocked read of
+	 * the body.
+	 */
+	private Optional<String> fetch(HttpRequest request, String url) throws IOException, InterruptedException {
+		HttpResponse<InputStream> response = http.send(request, HttpResponse.BodyHandlers.ofInputStream());
+		try (InputStream body = response.body()) {
+			String contentType = response.headers().firstValue("Content-Type").orElse("").toLowerCase(Locale.ROOT);
+			if (response.statusCode() != 200 || !contentType.contains("text/html")) {
+				return Optional.empty();
+			}
+			byte[] html = body.readNBytes(MAX_BYTES);
+			String text = Jsoup.parse(new ByteArrayInputStream(html), null, url).body().text();
+			return text.isBlank() ? Optional.empty() : Optional.of(text.substring(0, Math.min(text.length(), MAX_CHARS)));
 		}
 	}
 }

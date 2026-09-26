@@ -101,9 +101,6 @@ class WebSearchToolsTest {
 			.hasMessageContaining("settings.yml");
 	}
 
-	/**
-	 * A response of the SearXNG JSON API, reduced to the fields we read plus a few we ignore.
-	 */
 	@Test
 	void loadsThePageOfEveryResultOnRequest() {
 		server.expect(requestTo(startsWith(SEARCH))).andRespond(withSuccess(response(2), MediaType.APPLICATION_JSON));
@@ -142,6 +139,9 @@ class WebSearchToolsTest {
 		assertThat(json).doesNotContain("rawContent");
 	}
 
+	/**
+	 * A response of the SearXNG JSON API, reduced to the fields we read plus a few we ignore.
+	 */
 	private static String response(int count) {
 		String results = IntStream.range(0, count)
 			.mapToObj(i -> """
