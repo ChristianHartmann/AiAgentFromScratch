@@ -13,7 +13,7 @@ Spring AI dient nur als Schicht zum LLM-Anbieter, so wie LiteLLM im Buch. Die Ag
 | 3 | Enabling actions: Tool use | ✅ Erledigt | Tag `chapter-03`; Websuche über SearXNG statt Tavily |
 | 4 | Implementing a basic ReAct agent | ✅ Erledigt | Tag `chapter-04`; der Lauf des GAIA-Agenten steht noch aus |
 | 5 | Building knowledge bases with RAG | ✅ Erledigt | Tag `chapter-05`; Embeddings über Gemini, Seiteninhalte selbst geladen statt über Tavily |
-| 6 | Adding memory to your agent | ❌ Offen | |
+| 6 | Adding memory to your agent | ⚠️ In Arbeit | |
 | 7 | Planning and reflection for complex tasks | ❌ Offen | |
 | 8 | Empowering agents with code execution | ❌ Offen | |
 | 9 | Orchestrating multi-agent systems | ❌ Offen | |
